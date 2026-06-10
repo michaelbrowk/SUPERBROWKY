@@ -54,6 +54,53 @@ That's it. Open Claude Code in your project and start with the kickoff prompt be
 
 ---
 
+## How it works / FAQ
+
+### The mechanism
+- **`CLAUDE.md` loads into context every session.** The postulates are
+  always-on instructions, not a one-off prompt — design-system-first,
+  brainstorm-before-build, and "no slop" govern every turn.
+- **Skills fire when relevant.** Their descriptions + the trigger table in
+  `CLAUDE.md` + the brainstorm-before-code habit make Claude reach for them: any
+  UI → `impeccable` runs the AI Slop Test and the three-skill rule blocks raw
+  values; `emil-design-eng` for motion; `polish` for the final pass.
+- **`.impeccable.md` is read automatically** by impeccable's context-gathering
+  protocol, so designs are grounded in *your* brand, not generic defaults.
+- **Flow is design → plan → build:** `brainstorming` (propose + approve) →
+  `writing-plans` → implement. Not a jump to code.
+
+### FAQ
+
+**Do I have to run `install-skills.sh`?** Yes, for the full effect — the skills
+are the engine. Copying only the templates gives you the postulates (better than
+nothing) but not the taste skills.
+
+**Why is `superpowers` a manual step?** Plugins install through Claude Code's
+`/plugin` UI, not a shell script. One minute: `/plugin` →
+`claude-plugins-official` → `superpowers`.
+
+**The output is still generic.** Almost always an empty or vague
+`.impeccable.md`. Garbage in, generic out — fill it properly, or run
+`/impeccable teach` and answer the questions.
+
+**It jumped straight to code instead of brainstorming.** Use the kickoff prompt
+— it nudges the design-first flow. `CLAUDE.md` pushes it too, but a bare
+"build X" gives Claude less to anchor on.
+
+**My project has no design tokens yet.** Then step zero is building the design
+system (the `design-system` skill, or `impeccable` from your brand). The kit
+enforces "use tokens/components" — it doesn't invent your system for you.
+
+**How do I update the skills?** Re-run `install-skills.sh` — it re-syncs to the
+latest upstream. It overwrites same-named skills, so keep local customizations
+elsewhere.
+
+**Does it work for mobile / non-web?** The postulates and the system-first rule
+are stack-agnostic. The design skills lean web, but "tokens/components, never
+raw values" transfers to SwiftUI, Flutter, etc.
+
+---
+
 ## What each skill does
 
 | Skill | Does | Source · License |
