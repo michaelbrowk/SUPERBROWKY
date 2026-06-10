@@ -23,6 +23,34 @@ anyone's work).
 
 ---
 
+## 🤖 If you're Claude Code (someone pasted you this link)
+
+A user pointed you here and asked to set it up. **Do it for them — don't make
+them run shell commands.** Steps:
+
+1. **Clone the kit** to a scratch dir:
+   `git clone https://github.com/michaelbrowk/SUPERBROWKY.git /tmp/superbrowky`
+2. **Install the design skills:** `bash /tmp/superbrowky/install-skills.sh`
+   (clones the upstream skill repos into the user's `~/.claude/skills/`).
+3. **Wire the templates into their project:**
+   `bash /tmp/superbrowky/bootstrap.sh <their-project-root>`
+   (copies `CLAUDE.md` + `.impeccable.md`; it won't clobber existing files).
+4. **Tell them to install the process plugin** — this is the one thing you can't
+   do for them: in Claude Code run `/plugin` → marketplace
+   `claude-plugins-official` → install `superpowers`.
+5. **Capture their brand.** Interview them (audience, three brand words,
+   aesthetic direction, anti-references, exact palette + fonts) and write it into
+   `<their-project-root>/.impeccable.md` — or tell them to run `/impeccable
+   teach` and answer the questions. **Don't leave it blank** — empty brand = generic output.
+6. **Tell them to start a fresh Claude Code session** so the newly installed
+   skills load, then fill the `<PLACEHOLDERS>` in `CLAUDE.md` (stack, where
+   tokens/components live, test command).
+
+After that, the postulates in `CLAUDE.md` and the skills do the rest. The human
+walkthrough below is the same thing, by hand.
+
+---
+
 ## Setup
 
 **One command** — installs the skills and wires the templates into your project:
