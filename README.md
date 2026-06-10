@@ -23,23 +23,33 @@ anyone's work).
 
 ---
 
-## Setup (3 steps)
+## Setup
+
+**One command** — installs the skills and wires the templates into your project:
+
+```bash
+git clone https://github.com/michaelbrowk/SUPERBROWKY.git && cd SUPERBROWKY
+bash bootstrap.sh /path/to/your-project
+#   …then in Claude Code: /plugin → "claude-plugins-official" → install "superpowers"
+```
+
+…or **step by step** if you prefer:
 
 ```bash
 # 1. Install the design + process skills into ~/.claude/skills (once per machine)
 bash install-skills.sh
-#    …then in Claude Code: /plugin → marketplace "claude-plugins-official" → install "superpowers"
+#    …then in Claude Code: /plugin → "claude-plugins-official" → install "superpowers"
 
 # 2. Copy the two templates into YOUR project root
 cp template/CLAUDE.md       /path/to/your-project/CLAUDE.md
 cp template/.impeccable.md  /path/to/your-project/.impeccable.md
-
-# 3. Fill them in
-#    - CLAUDE.md   → project specifics (stack, where tokens/components live, test cmd)
-#    - .impeccable.md → your brand  (or just run /impeccable teach and answer the questions)
 ```
 
-That's it. Open Claude Code in your project and start with the kickoff prompt below.
+Then **fill them in:** `CLAUDE.md` → project specifics (stack, where
+tokens/components live, test command); `.impeccable.md` → your brand (or just
+run `/impeccable teach` and answer the questions).
+
+Open Claude Code in your project and start with the kickoff prompt below.
 
 ---
 
