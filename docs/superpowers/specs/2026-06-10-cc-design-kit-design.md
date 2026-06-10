@@ -24,23 +24,30 @@ A single self-contained file can carry layers 2–3 but **cannot replicate layer
 
 ```
 cc-design-kit/                       (public GitHub repo)
-├── README.md                        what it is, why, 3-step setup, copy-paste kickoff prompt
-├── install-skills.sh                copies design skills → ~/.claude/skills/, installs superpowers plugin
-├── skills/                          bundled, sanitized design skills (verbatim copies)
-│   ├── impeccable/
-│   ├── design-taste-frontend/
-│   ├── emil-design-eng/
-│   ├── stop-slop/
-│   ├── design-system/
-│   ├── brand/
-│   └── polish/
+├── README.md                        what it is, why, 3-step setup, copy-paste kickoff prompt, skills table
+├── LICENSE                          MIT — covers the kit's OWN files only
+├── install-skills.sh                fetches the design skills from upstream → ~/.claude/skills/
 └── template/                        drop into YOUR project root
     ├── CLAUDE.md                    operating postulates + design-system-first mandate + skill triggers
     └── .impeccable.md              brand / design-context capture (impeccable auto-reads this exact filename)
 ```
 
+**Skill distribution = REFERENCE, not bundle (decided after a licensing check).**
+The design skills are third-party with mixed/absent licenses (impeccable: Apache
+2.0; stop-slop/design-system: MIT; design-taste-frontend, emil-design-eng, brand,
+polish: no stated license). Republishing unlicensed third-party work in a public
+repo is a copyright violation, so the kit does NOT bundle skills. `install-skills.sh`
+clones the authoritative upstream repos (from `~/.agents/.skill-lock.json`) and
+copies their skills into the user's own `~/.claude/skills/`:
+- `pbakaus/impeccable` → impeccable, polish + the taste suite (Apache 2.0)
+- `emilkowalski/skill` → emil-design-eng
+- `Leonxlnx/taste-skill` → design-taste-frontend, high-end-visual-design, redesign
+`stop-slop` / `design-system` / `brand` are listed as optional extras with author
+credit (not in the lock file → no authoritative URL to point at). Process skills
+(`superpowers`) install via the `claude-plugins-official` marketplace.
+
 **Two layers, two install moments:**
-- **Machine (once per machine):** run `install-skills.sh` → design skills + the superpowers process plugin.
+- **Machine (once per machine):** run `install-skills.sh` → fetches design skills from upstream + prompts for the superpowers plugin.
 - **Project (per repo):** copy `template/CLAUDE.md` and `template/.impeccable.md` into the project root, fill the placeholders.
 
 Stack-agnostic: postulates + the design-system-first mandate are identical for web and mobile; worked examples are shown in CSS/Tailwind (the design skills lean web), with a note that the principle ("tokens/components, never raw values") transfers to SwiftUI/etc.
@@ -50,10 +57,9 @@ Stack-agnostic: postulates + the design-system-first mandate are identical for w
 ## Components
 
 ### 1. `install-skills.sh`
-- Copies each `skills/<name>/` to `~/.claude/skills/<name>/` (creates the dir, does not overwrite without a prompt; prints what it did).
-- Installs the superpowers plugin (the process skills) via the Claude Code plugin marketplace — or, if non-interactive, prints the exact `claude` command + marketplace URL to run.
-- Idempotent; safe to re-run. Prints a final "next: copy template/ into your project" pointer.
-- Pure bash, no deps beyond `cp`/`mkdir`. Works on macOS + Linux.
+- Clones each authoritative upstream repo (`pbakaus/impeccable`, `emilkowalski/skill`, `Leonxlnx/taste-skill`) shallowly to a temp dir, then copies every `SKILL.md`-bearing folder into `~/.claude/skills/` (robust to per-repo layout). Cleans up the temp dir.
+- Prints the manual one-step for the superpowers plugin (`/plugin` → `claude-plugins-official` → `superpowers`) and lists the optional extras (`stop-slop`, `design-system`, `brand`) with author credit.
+- Idempotent; safe to re-run (re-syncs to latest upstream). `set -euo pipefail`, guards on `git`, handles clone failures gracefully. Pure bash, macOS + Linux.
 
 ### 2. `template/CLAUDE.md` — the heart (the "postulates + coherent prompt")
 Sections:
@@ -86,10 +92,10 @@ The brand file is named **`.impeccable.md`** (not `BRAND.md`) — the exact file
 
 ## Build order
 1. Scaffold repo + `.gitignore` + MIT `LICENSE`.
-2. Copy the 7 design skills into `skills/` (verbatim; scan for any personal references and strip).
+2. Resolve authoritative skill sources from `~/.agents/.skill-lock.json` (done — see decision above). No skills bundled.
 3. Write `template/CLAUDE.md`.
 4. Write `template/.impeccable.md`.
-5. Write `install-skills.sh` (+ chmod +x).
-6. Write `README.md` (incl. kickoff prompt).
-7. Sanitization pass: grep the whole repo for personal paths / secrets / project-specific names; verify clean.
-8. Optional: push as a public GitHub repo.
+5. Write `install-skills.sh` (clone-from-upstream; `chmod +x`).
+6. Write `README.md` (incl. kickoff prompt + skills/license table).
+7. Sanitization pass: grep the whole repo for personal paths / secrets; verify clean (the kit ships no third-party skill content, so the surface is just the templates + script).
+8. User reviews; then optionally push as a public GitHub repo.
