@@ -13,6 +13,9 @@
 //   --max-height N       Resize if image height > N. Default 2048.
 //   --min-bytes N        Skip files smaller than this. Default 20480 (20KB).
 //   --emit-webp          Emit `.webp` siblings instead of replacing originals.
+//   --emit-avif          Emit `.avif` siblings (~20% smaller than WebP; slower
+//                        encode/decode). Good for below-the-fold photos; for the
+//                        LCP hero, WebP is the safer bet. Wins over --emit-webp.
 //   --png-only           Only process PNGs.
 //   --jpg-only           Only process JPG/JPEGs.
 //   --webp-only          Only process WebPs (re-encode).
@@ -35,6 +38,7 @@ const opt = {
   maxHeight: 2048,
   minBytes: 20 * 1024,
   emitWebp: false,
+  emitAvif: false,
   pngOnly: false,
   jpgOnly: false,
   webpOnly: false,
@@ -50,6 +54,7 @@ for (let i = 0; i < args.length; i++) {
   else if (a === "--max-height") opt.maxHeight = Number(args[++i]);
   else if (a === "--min-bytes") opt.minBytes = Number(args[++i]);
   else if (a === "--emit-webp") opt.emitWebp = true;
+  else if (a === "--emit-avif") opt.emitAvif = true;
   else if (a === "--png-only") opt.pngOnly = true;
   else if (a === "--jpg-only") opt.jpgOnly = true;
   else if (a === "--webp-only") opt.webpOnly = true;
@@ -80,7 +85,10 @@ try {
   process.exit(1);
 }
 
-const RASTER_EXTS = new Set([".png", ".jpg", ".jpeg", ".webp"]);
+const RASTER_EXTS = new Set([".png", ".jpg", ".jpeg", ".webp", ".avif"]);
+
+// Sibling format to emit, if any (--emit-avif wins over --emit-webp).
+const EMIT_EXT = opt.emitAvif ? ".avif" : opt.emitWebp ? ".webp" : null;
 
 function shouldConsider(ext) {
   const e = ext.toLowerCase();
@@ -140,7 +148,10 @@ for (const file of files) {
   let pipeline = resizeArgs ? input.resize(resizeArgs) : input;
   let outExt, outBuf;
 
-  if (opt.emitWebp || ext === ".webp") {
+  if (EMIT_EXT === ".avif" || ext === ".avif") {
+    outExt = ".avif";
+    outBuf = await pipeline.avif({ quality: opt.quality, effort: 4 }).toBuffer();
+  } else if (EMIT_EXT === ".webp" || ext === ".webp") {
     outExt = ".webp";
     outBuf = await pipeline.webp({ quality: opt.quality, effort: 6 }).toBuffer();
   } else if (ext === ".png") {
@@ -161,14 +172,15 @@ for (const file of files) {
   const after = outBuf.byteLength;
   const pct = 100 * (1 - after / before);
 
-  const targetPath = opt.emitWebp && ext !== ".webp"
-    ? file.replace(new RegExp(`${ext}$`), ".webp")
+  const emitSibling = EMIT_EXT && ext !== EMIT_EXT;
+  const targetPath = emitSibling
+    ? file.replace(new RegExp(`${ext}$`), EMIT_EXT)
     : file;
 
   const action =
     after >= before ? "skip (would be larger)"
     : opt.dry ? "dry-run (would write)"
-    : opt.emitWebp && ext !== ".webp" ? `write sibling ${basename(targetPath)}`
+    : emitSibling ? `write sibling ${basename(targetPath)}`
     : "replace";
 
   const savings = after < before ? before - after : 0;
@@ -215,6 +227,7 @@ function printUsageAndExit(code) {
     "  --max-height N     resize if taller. default 2048",
     "  --min-bytes N      skip smaller files. default 20480",
     "  --emit-webp        write .webp sibling (keep original)",
+    "  --emit-avif        write .avif sibling (smaller, slower; wins over --emit-webp)",
     "  --png-only         restrict to .png",
     "  --jpg-only         restrict to .jpg/.jpeg",
     "  --webp-only        restrict to .webp",
