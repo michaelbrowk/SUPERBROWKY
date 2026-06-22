@@ -50,6 +50,30 @@ jobs:
           # dry-run must not write into the target
           [ -z "$(ls -A "$proj")" ] || { echo "dry-run wrote to target"; exit 1; }
 
+  windows:
+    name: PowerShell parity (parse + dry-run)
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: parse .ps1 (syntax)
+        shell: pwsh
+        run: |
+          foreach ($f in "install-skills.ps1","bootstrap.ps1") {
+            $errs = $null
+            [void][System.Management.Automation.Language.Parser]::ParseFile((Resolve-Path $f), [ref]$null, [ref]$errs)
+            if ($errs) { $errs | ForEach-Object { Write-Host $_ }; exit 1 }
+            Write-Host "ok: $f parses"
+          }
+      - name: dry-run smoke (offline)
+        shell: pwsh
+        run: |
+          ./install-skills.ps1 -DryRun
+          $proj = Join-Path $env:TEMP ([guid]::NewGuid())
+          New-Item -ItemType Directory -Path $proj | Out-Null
+          ./bootstrap.ps1 $proj -DryRun
+          if (Get-ChildItem $proj) { Write-Host "dry-run wrote to target"; exit 1 }
+          Write-Host "ps dry-run wrote nothing"
+
   install:
     name: real install (informational)
     runs-on: ubuntu-latest

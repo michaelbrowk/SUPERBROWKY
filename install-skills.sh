@@ -54,10 +54,11 @@ lock_pin() { # $1=key
 
 usage() {
   cat <<EOS
-Usage: bash install-skills.sh [--latest] [--dry-run] [--check-updates]
+Usage: bash install-skills.sh [--latest] [--dry-run] [--check-updates] [--uninstall]
   --latest         install upstream HEAD instead of the versions.lock pins
-  --dry-run        print what would be installed; download and write nothing
+  --dry-run        print what would happen; download/write/remove nothing
   --check-updates  report upstream drift vs versions.lock (read-only), then exit
+  --uninstall      remove kit-managed skills, restoring any pre-kit backups
 EOS
 }
 
@@ -68,6 +69,7 @@ for arg in "$@"; do
   case "${arg}" in
     --latest)        REF_MODE="latest" ;;
     --check-updates) MODE="check-updates" ;;
+    --uninstall)     MODE="uninstall" ;;
     --dry-run)       DRY=1 ;;
     -h|--help)       usage; exit 0 ;;
     *) warn "unknown argument: ${arg}"; usage; exit 1 ;;
@@ -205,7 +207,38 @@ check_updates() {
   fi
 }
 
+# Remove kit-managed skills. Restores a pre-kit original from BACKUP_DIR if one
+# was kept; otherwise just removes the kit copy. --dry-run aware. Note:
+# impeccable is per-project (npx) and is not touched here; this only removes
+# skills the kit currently manages (manifest + bundled).
+uninstall() {
+  bold "Uninstalling kit-managed skills from ${SKILLS_DIR}${DRY:+ (dry-run)}"
+  local removed=0 restored=0 absent=0 name dest backup
+  local names=()
+  for entry in "${MANIFEST[@]}"; do IFS='|' read -r _ _ name <<< "${entry}"; names+=("${name}"); done
+  for name in "${BUNDLED[@]}"; do names+=("${name}"); done
+  for name in "${names[@]}"; do
+    dest="${SKILLS_DIR}/${name}"
+    backup="${BACKUP_DIR}/${name}"
+    if [ ! -e "${dest}" ] && [ ! -L "${dest}" ]; then absent=$((absent+1)); continue; fi
+    if [ -e "${backup}" ]; then
+      if [ "${DRY}" -eq 1 ]; then ok "would restore pre-kit ${name} from backup"; else rm -rf "${dest}"; mv "${backup}" "${dest}"; ok "restored pre-kit ${name}"; fi
+      restored=$((restored+1))
+    else
+      if [ "${DRY}" -eq 1 ]; then ok "would remove ${name}"; else rm -rf "${dest}"; ok "removed ${name}"; fi
+      removed=$((removed+1))
+    fi
+  done
+  echo
+  if [ "${DRY}" -eq 1 ]; then
+    bold "DRY RUN: ${removed} would be removed, ${restored} restored from backup, ${absent} not present."
+  else
+    ok "Done: ${removed} removed, ${restored} restored from backup, ${absent} not present."
+  fi
+}
+
 if [ "${MODE}" = "check-updates" ]; then check_updates; exit 0; fi
+if [ "${MODE}" = "uninstall" ]; then uninstall; exit 0; fi
 
 [ "${DRY}" -eq 1 ] && bold "DRY RUN — resolving versions only; nothing is downloaded or written"
 bold "Installing design + SEO skills into ${SKILLS_DIR} (${REF_MODE} versions)"

@@ -24,8 +24,9 @@ This kit ships layers 2–3 (your files) and a one-command installer for layer 1
 (it fetches the skills from their upstream authors — it does **not** republish
 anyone's work).
 
-**Requirements:** git, curl, Node 24+ (for `impeccable`). On Windows, run the
-commands in Git Bash or WSL.
+**Requirements:** git, curl, Node 24+ (for `impeccable`). On Windows, use the
+native PowerShell scripts (`bootstrap.ps1` / `install-skills.ps1`) — see
+[Windows](#windows) — or run the bash scripts in Git Bash / WSL.
 
 ---
 
@@ -102,6 +103,24 @@ cp -n template/CLAUDE.md template/PRODUCT.md template/DESIGN.md /path/to/your-pr
 
 # 4. In Claude Code: /plugin → "claude-plugins-official" → install "superpowers"
 ```
+
+### Windows
+
+Native PowerShell scripts mirror the bash ones (same flags, same
+`versions.lock`):
+
+```powershell
+git clone https://github.com/michaelbrowk/SUPERBROWKY.git; cd SUPERBROWKY
+pwsh -File bootstrap.ps1 C:\path\to\your-project
+#   preview / verify / update / remove:
+pwsh -File bootstrap.ps1 C:\path\to\your-project -DryRun
+pwsh -File bootstrap.ps1 C:\path\to\your-project -Check
+pwsh -File install-skills.ps1 -CheckUpdates
+pwsh -File install-skills.ps1 -Uninstall
+```
+
+Needs PowerShell 7+ (`pwsh`), `git`, `tar` (bundled with Windows 10+), and
+Node 24+. Git Bash / WSL users can run the `.sh` scripts instead.
 
 Then, in a **fresh** Claude Code session, **fill them in:** `PRODUCT.md` →
 brand + audience, `DESIGN.md` → the exact values, `CLAUDE.md` → project
@@ -201,6 +220,12 @@ keeps your original pre-kit copy of any same-named skill at
 `~/.claude/skills-backup/`. For the project-level engine, `impeccable` manages
 its own updates: `npx impeccable skills update`.
 
+**How do I remove the kit's skills?** `bash install-skills.sh --uninstall`
+(add `--dry-run` to preview). It removes the kit-managed machine skills and
+restores any pre-kit original it had backed up to `~/.claude/skills-backup/`.
+The per-project `impeccable` is separate — remove it from the project's
+`.claude/skills/` if you want it gone too.
+
 **Does it work for mobile / non-web?** The postulates and the system-first
 rule are stack-agnostic. The design skills lean web, but "tokens/components,
 never raw values" transfers to SwiftUI, Flutter, etc.
@@ -262,6 +287,31 @@ public page goes live.
 One warning: skills route by description matching. Don't stack five
 general-purpose design engines — curate a small set and declare a primary, or
 output becomes whichever skill won the routing lottery.
+
+### Avoiding skill routing conflicts
+
+Skills fire when their `description` matches the task. Two engines that both
+claim "any UI work" — most commonly `impeccable` and Anthropic's
+`frontend-design` — will compete, and you get whichever won the match, not the
+one you wanted. Same risk if you add another broad taste skill.
+
+The fix is to **declare a primary in your `CLAUDE.md`** so the choice is
+explicit, not luck. The kit's template already names `impeccable` as primary;
+if you install an overlapping engine, make the boundary concrete:
+
+```md
+## Skill precedence (resolve routing conflicts)
+- **Primary design engine: `impeccable`.** It owns project context
+  (PRODUCT.md + DESIGN.md), craft, polish, and audits. Always invoke it for UI.
+- `frontend-design` (if installed): do NOT use for general UI — it overlaps
+  with impeccable. Reserve it for <one specific case, or remove it>.
+- `emil-design-eng` / `high-end-visual-design` *sharpen* impeccable's output
+  (motion, premium polish) — they don't replace it.
+```
+
+Rule of thumb: one primary engine; everything else either owns a **distinct
+domain** (a11y, meta, perf, SEO, prose) or is explicitly a *refiner* of the
+primary. If two skills still fight, narrow or remove one — don't hope.
 
 ---
 

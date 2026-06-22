@@ -88,6 +88,10 @@ node ~/.claude/skills/psi-optimize/scripts/compress-images.mjs --quality 88 --ma
 
 # Convert PNG/JPG to .webp sibling (keeps original)
 node ~/.claude/skills/psi-optimize/scripts/compress-images.mjs --emit-webp path/to/hero.png
+
+# Emit .avif siblings (~20% smaller than WebP, slower encode/decode) — good for
+# below-the-fold photos; keep the LCP hero on WebP. --emit-avif wins over --emit-webp.
+node ~/.claude/skills/psi-optimize/scripts/compress-images.mjs --emit-avif public/gallery
 ```
 
 Rules the script enforces:
