@@ -114,10 +114,10 @@ foreach ($f in @("CLAUDE.md", "PRODUCT.md", "DESIGN.md")) {
 
 Write-Host ""
 Write-Bold "2/3 - Installing machine-wide design skills"
-$installArgs = @()
-if ($Latest) { $installArgs += "-Latest" }
-if ($DryRun) { $installArgs += "-DryRun" }
-& (Join-Path $Here "install-skills.ps1") @installArgs
+$installSplat = @{}
+if ($Latest) { $installSplat["Latest"] = $true }
+if ($DryRun) { $installSplat["DryRun"] = $true }
+& (Join-Path $Here "install-skills.ps1") @installSplat
 
 Write-Host ""
 Write-Bold "3/3 - Installing impeccable into $Target"
