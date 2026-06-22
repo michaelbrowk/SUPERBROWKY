@@ -1,0 +1,70 @@
+name: CI
+
+on:
+  push:
+    branches: ["**"]
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  shell:
+    name: shellcheck + syntax
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: bash -n (syntax)
+        run: |
+          bash -n bootstrap.sh
+          bash -n install-skills.sh
+      - name: shellcheck
+        uses: ludeeus/action-shellcheck@master
+        with:
+          severity: error
+          scandir: "."
+
+  scripts:
+    name: node scripts + dry-run smoke
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "24"
+      - name: node --check (bundled scripts parse)
+        run: |
+          node --check skills/a11y-audit/scripts/contrast-check.mjs
+          node --check skills/meta-audit/scripts/meta-scan.mjs
+      - name: contrast-check unit (pass exits 0, fail exits 1)
+        run: |
+          node skills/a11y-audit/scripts/contrast-check.mjs "#111827:#ffffff"
+          if node skills/a11y-audit/scripts/contrast-check.mjs "#ffffff:#ffffff"; then
+            echo "expected non-zero exit on a failing contrast pair"; exit 1
+          fi
+      - name: dry-run smoke (offline — downloads nothing)
+        run: |
+          proj="$(mktemp -d)"
+          bash install-skills.sh --dry-run
+          bash bootstrap.sh "$proj" --dry-run
+          # dry-run must not write into the target
+          [ -z "$(ls -A "$proj")" ] || { echo "dry-run wrote to target"; exit 1; }
+
+  install:
+    name: real install (informational)
+    runs-on: ubuntu-latest
+    continue-on-error: true # depends on third-party upstreams; never blocks merge
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "24"
+      - name: install into a scratch HOME
+        run: |
+          export HOME="$(mktemp -d)"
+          bash install-skills.sh
+          for s in $(sed -n '/^MANIFEST=(/,/^)/p' install-skills.sh | sed -n 's/.*|\([a-z0-9-]*\)".*/\1/p') \
+                   $(sed -n '/^BUNDLED=(/,/^)/p' install-skills.sh | sed -n 's/^[[:space:]]*"\([a-z0-9-]*\)".*/\1/p'); do
+            test -f "$HOME/.claude/skills/$s/SKILL.md" || { echo "missing $s"; exit 1; }
+          done
+          echo "all skills installed with SKILL.md"

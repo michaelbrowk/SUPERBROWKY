@@ -67,11 +67,10 @@ These override convenience. They are why the output is good, not generic.
 ---
 
 ## Skills — when to reach for which
-(Taste skills are installed machine-wide by the kit, except `impeccable`,
-which lives in this project's `.claude/skills/`. `brainstorming` /
+(Taste + ship-clean skills are installed machine-wide by the kit, except
+`impeccable`, which lives in this project's `.claude/skills/`. `brainstorming` /
 `writing-plans` come from the `superpowers` plugin — if `/plugin` wasn't run
-yet, install it before any non-trivial feature. `stop-slop` is an optional
-extra.)
+yet, install it before any non-trivial feature.)
 
 | Situation | Skill |
 |---|---|
@@ -81,19 +80,26 @@ extra.)
 | Motion, transitions, the "feels great" details | `emil-design-eng` |
 | Final pre-ship pass (alignment, spacing, micro-detail) | `/impeccable polish` |
 | Upgrading an existing UI without breaking it | `redesign-existing-projects` |
-| Any user-facing prose (copy, errors, empty states) | `stop-slop` (if installed) |
+| Any user-facing prose (copy, errors, empty states) | `stop-slop` |
 | Slow page, Lighthouse/PSI score, Core Web Vitals, heavy images | `psi-optimize` |
+| Accessibility, WCAG, contrast, keyboard/screen-reader, focus, alt, aria | `a11y-audit` |
+| Before a public page ships: OG/Twitter cards, favicon, meta, sitemap, robots | `meta-audit` |
 | Technical / on-page SEO: meta, indexing, internal links | `seo-audit` |
 | Being cited by AI answers (ChatGPT, Perplexity, AI Overviews) | `ai-seo` |
 | Structured data / rich snippets | `schema` |
+| SEO pages at scale from templates + data | `programmatic-seo` |
+| Site hierarchy, nav, URL structure, internal linking | `site-architecture` |
+| Marketing-page / form conversion optimization | `cro` |
 | Any non-trivial feature | `brainstorming` → `writing-plans` |
 
 Process rule: **`brainstorming` (design + approval) → `writing-plans` (plan) →
 implement.** Don't skip to code. If several general design skills could claim a
 task, `impeccable` is the primary engine; the others sharpen it.
 
-Ship rule: before a **public** page goes live, run `psi-optimize` (perf) and
-`seo-audit` once — beautiful but slow or invisible still fails the bar.
+Ship rule: before a **public** page goes live, run the ship-clean pass once —
+`psi-optimize` (perf), `a11y-audit` (WCAG AA), `meta-audit` (share/SEO meta),
+and `seo-audit` (findability). Beautiful but slow, unusable, preview-blank, or
+invisible still fails the bar.
 
 ## Design-lint pass (after every UI change)
 
