@@ -1,5 +1,7 @@
 # Claude Code Design Kit
 
+[![CI](https://github.com/michaelbrowk/SUPERBROWKY/actions/workflows/ci.yml/badge.svg)](https://github.com/michaelbrowk/SUPERBROWKY/actions/workflows/ci.yml)
+
 A small starter kit that makes Claude Code produce **production-grade code with
 no design slop** — output that follows the design system you build and stays
 grounded in your brand, driven by clear postulates instead of "make it nice."
@@ -7,9 +9,11 @@ grounded in your brand, driven by clear postulates instead of "make it nice."
 It's not magic and it's not one file. Quality comes from **three layers**:
 
 1. **Skills — the taste engine** (`impeccable`, `emil-design-eng`, the taste
-   suite, `superpowers` for process), plus a ship-clean layer: performance
-   (`psi-optimize`) and SEO (`seo-audit`, `ai-seo`, `schema`). These do the
-   heavy lifting — templates alone won't replicate the quality.
+   suite, `superpowers` for process), plus a four-pillar ship-clean layer:
+   performance (`psi-optimize`), findability (`seo-audit`, `ai-seo`, `schema`,
+   `programmatic-seo`, `site-architecture`, `cro`), accessibility
+   (`a11y-audit`), and pre-ship metadata + prose (`meta-audit`, `stop-slop`).
+   These do the heavy lifting — templates alone won't replicate the quality.
 2. **Always-on rules** — `template/CLAUDE.md`: components → tokens → mock,
    never raw values, verify with your eyes, capture every lesson.
 3. **Your brand, captured up front** — `template/PRODUCT.md` (who it's for,
@@ -48,12 +52,16 @@ them run shell commands.** Steps:
 5. **Tell them to start a fresh Claude Code session** so the newly installed
    skills load, then fill any remaining `<PLACEHOLDERS>` in `CLAUDE.md`
    (stack, where tokens/components live, test command).
-6. **Verify:** in the fresh session they ask *"Which design skills do you have?
-   Read PRODUCT.md and DESIGN.md and tell me what's still a placeholder."* —
+6. **Verify:** run `bash "$KIT/bootstrap.sh" <their-project-root> --check` (the
+   doctor — confirms templates, every machine skill, project impeccable, node).
+   Then in the fresh session they ask *"Which design skills do you have? Read
+   PRODUCT.md and DESIGN.md and tell me what's still a placeholder."* —
    expected: the five taste skills (`impeccable`, `emil-design-eng`,
    `design-taste-frontend`, `high-end-visual-design`,
-   `redesign-existing-projects`), the ship-clean four (`psi-optimize`,
-   `seo-audit`, `ai-seo`, `schema`), plus a list of gaps to fill.
+   `redesign-existing-projects`), the ship-clean set (`psi-optimize`,
+   `a11y-audit`, `meta-audit`, `seo-audit`, `ai-seo`, `schema`,
+   `programmatic-seo`, `site-architecture`, `cro`, `stop-slop`), plus a list of
+   gaps to fill.
 
 After that, the postulates in `CLAUDE.md` and the skills do the rest. The human
 walkthrough below is the same thing, by hand.
@@ -68,6 +76,14 @@ walkthrough below is the same thing, by hand.
 git clone https://github.com/michaelbrowk/SUPERBROWKY.git && cd SUPERBROWKY
 bash bootstrap.sh /path/to/your-project
 #   …then in Claude Code: /plugin → "claude-plugins-official" → install "superpowers"
+```
+
+Preview before you commit, and verify after:
+
+```bash
+bash bootstrap.sh /path/to/your-project --dry-run   # show every action, write nothing
+bash bootstrap.sh /path/to/your-project --check     # doctor: did the setup land?
+bash install-skills.sh --check-updates              # any upstream drift vs versions.lock?
 ```
 
 …or **step by step** if you prefer:
@@ -95,14 +111,16 @@ specifics (stack, token/component paths, test command). Shortcut: run
 sections; keep *Atmosphere / Voice / Banned patterns*, the design-lint pass
 checks them.
 
-**Verify it worked:** in that fresh session ask: *"Which design skills do you
+**Verify it worked:** run `bash bootstrap.sh /path/to/your-project --check`
+(the doctor). Then in that fresh session ask: *"Which design skills do you
 have? Read PRODUCT.md and DESIGN.md and tell me what's still a placeholder."*
 You should see the five taste skills (`impeccable`, `emil-design-eng`,
 `design-taste-frontend`, `high-end-visual-design`,
-`redesign-existing-projects`), the ship-clean four (`psi-optimize`,
-`seo-audit`, `ai-seo`, `schema`), and a list of gaps to fill. A good first
-task: something small and visual — one screen, one component — using the
-kickoff prompt below.
+`redesign-existing-projects`), the ship-clean set (`psi-optimize`,
+`a11y-audit`, `meta-audit`, `seo-audit`, `ai-seo`, `schema`,
+`programmatic-seo`, `site-architecture`, `cro`, `stop-slop`), and a list of
+gaps to fill. A good first task: something small and visual — one screen, one
+component — using the kickoff prompt below.
 
 ---
 
@@ -175,11 +193,13 @@ context flow). Move your brand brief content over
 **Where's the `polish` skill?** It's a sub-command now: `/impeccable polish`.
 Same for audits: `/impeccable audit`.
 
-**How do I update the skills?** Re-run `install-skills.sh` (add `--latest` for
-upstream HEAD instead of the pinned versions — may drift); it keeps your
-original pre-kit copy of any same-named skill at `~/.claude/skills-backup/`.
-For the project-level engine, `impeccable` manages its own updates:
-`npx impeccable skills update`.
+**How do I update the skills?** First see what's drifted:
+`bash install-skills.sh --check-updates` (read-only; prints the exact
+`versions.lock` lines to paste). Bump the pins you want, then re-run
+`install-skills.sh` (or pass `--latest` to ride upstream HEAD — may drift). It
+keeps your original pre-kit copy of any same-named skill at
+`~/.claude/skills-backup/`. For the project-level engine, `impeccable` manages
+its own updates: `npx impeccable skills update`.
 
 **Does it work for mobile / non-web?** The postulates and the system-first
 rule are stack-agnostic. The design skills lean web, but "tokens/components,
@@ -197,33 +217,35 @@ never raw values" transfers to SwiftUI, Flutter, etc.
 | `high-end-visual-design` | Agency-grade visual bar — the exact fonts/spacing/shadows that read "expensive" | [Leonxlnx/taste-skill](https://github.com/Leonxlnx/taste-skill) · no stated license (fetched from source) |
 | `redesign-existing-projects` | Upgrade an existing UI to premium without breaking it | [Leonxlnx/taste-skill](https://github.com/Leonxlnx/taste-skill) · no stated license (fetched from source) |
 | `psi-optimize` | PageSpeed/Lighthouse audit + fix loop: image compression (WebP), LCP preload, lazy-loading, render-blocking fixes | ships with this kit (`skills/`) · MIT |
+| `a11y-audit` | WCAG 2.1 AA audit + fix loop: contrast, alt/accessible names, focus, labels, structure, keyboard + screen-reader verify. Ships a pure-Node contrast checker | ships with this kit (`skills/`) · MIT |
+| `meta-audit` | Pre-ship public-page check: title/description, canonical, OG + Twitter cards, favicons, viewport, lang, robots, sitemap. Ships a `<head>` scanner | ships with this kit (`skills/`) · MIT |
 | `seo-audit` | Technical + on-page SEO diagnosis: meta, indexing, internal links | [coreyhaines31/marketingskills](https://github.com/coreyhaines31/marketingskills) · MIT |
 | `ai-seo` | Get cited by AI answers (AI Overviews, ChatGPT, Perplexity) | [coreyhaines31/marketingskills](https://github.com/coreyhaines31/marketingskills) · MIT |
 | `schema` | Structured data / rich snippets done right | [coreyhaines31/marketingskills](https://github.com/coreyhaines31/marketingskills) · MIT |
+| `programmatic-seo` | SEO pages at scale from templates + data | [coreyhaines31/marketingskills](https://github.com/coreyhaines31/marketingskills) · MIT |
+| `site-architecture` | Page hierarchy, navigation, URL + internal-link planning | [coreyhaines31/marketingskills](https://github.com/coreyhaines31/marketingskills) · MIT |
+| `cro` | Conversion-rate optimization for marketing pages + forms | [coreyhaines31/marketingskills](https://github.com/coreyhaines31/marketingskills) · MIT |
+| `stop-slop` | Strips AI tells from prose; pairs with the voice keep/ban list in `DESIGN.md` | [hardikpandya/stop-slop](https://github.com/hardikpandya/stop-slop) · MIT |
 | `superpowers` (brainstorming, writing-plans, …) | Design-before-code + planning discipline | `claude-plugins-official` marketplace |
 
-`install-skills.sh` installs the **eight machine-wide rows** above (pinned to
-verified commits, explicit folder allowlist — upstream repos contain more:
-builds for other editors, style packs, ~40 marketing skills, GPT variants;
-those are deliberately not installed). `impeccable` installs per-project via
-`npx -y impeccable@2.3.2 skills install --yes`, and `superpowers` via
+`install-skills.sh` installs the **fourteen machine-wide rows** above (eleven
+from upstream, pinned in `versions.lock` to verified commits with an explicit
+folder allowlist — upstream repos contain more: builds for other editors, style
+packs, ~40 marketing skills, GPT variants, deliberately not installed; plus
+three bundled with this kit). `impeccable` installs per-project via
+`npx -y impeccable@<pinned> skills install --yes`, and `superpowers` via
 `/plugin`.
 
-Why perf + SEO in a *design* kit: a beautiful page that loads in six seconds
-or never gets found still fails. `psi-optimize` and the SEO trio are the
-"ship clean" half of the same discipline — `CLAUDE.md` runs them before any
+Why perf / a11y / meta / SEO live in a *design* kit: a page can be beautiful and
+still fail if it loads in six seconds, can't be operated by keyboard, has a
+blank share preview, or never gets found. The four ship-clean pillars —
+performance (`psi-optimize`), accessibility (`a11y-audit`), pre-ship metadata +
+prose (`meta-audit`, `stop-slop`), and findability (the SEO set) — are the
+"ship clean" half of the same discipline. `CLAUDE.md` runs them before any
 public page goes live.
 
 ### Optional extras (not auto-installed — add if you want them)
 
-- **`stop-slop`** — strips AI tells from prose; pairs with the voice keep/ban
-  list in `DESIGN.md`. MIT,
-  [hardikpandya/stop-slop](https://github.com/hardikpandya/stop-slop)
-  ([Hardik Pandya](https://hvpandya.com)). Recommended.
-- **`programmatic-seo`**, **`site-architecture`**, **`cro`** — more from the
-  same MIT [marketingskills](https://github.com/coreyhaines31/marketingskills)
-  repo (pages at scale, sitemap/IA planning, conversion optimization). Add the
-  folders to the manifest in `install-skills.sh` if you want them.
 - **`minimalist-ui`**, **`industrial-brutalist-ui`** — opinionated style packs
   from the same `Leonxlnx/taste-skill` repo, for when the brand genuinely is
   that.
@@ -249,12 +271,12 @@ output becomes whichever skill won the routing lottery.
   from source; it doesn't bundle or relicense them. Credit and licenses stay
   with the upstream repos above. If you fork this kit, keep it that way.
 - **Versions are pinned on purpose.** Upstream skill repos change shape (an
-  `impeccable` rewrite once silently broke this kit's core mechanism).
-  `install-skills.sh` defaults to verified commits; the `impeccable` CLI is
-  pinned to `2.3.2`; `--latest` is there when you want to ride HEAD. One
-  honest caveat: `impeccable`'s skill *content* is downloaded live from
-  impeccable.style by its own installer — the kit pins the CLI, not that
-  bundle.
+  `impeccable` rewrite once silently broke this kit's core mechanism). Every pin
+  — skill commits and the `impeccable` CLI — lives in `versions.lock` (one
+  place to edit); `bash install-skills.sh --check-updates` reports drift,
+  `--latest` rides HEAD. One honest caveat: `impeccable`'s skill *content* is
+  downloaded live from impeccable.style by its own installer — the kit pins the
+  CLI, not that bundle.
 - **Stack-agnostic.** The postulates and the design-system-first rule are
   identical for web or mobile; the design skills lean web, but
   "tokens/components, never raw values" transfers to SwiftUI, Flutter, etc.
