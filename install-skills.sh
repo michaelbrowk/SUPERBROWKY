@@ -52,12 +52,27 @@ lock_pin() { # $1=key
   done < "${LOCK_FILE}"
 }
 
+usage() {
+  cat <<EOS
+Usage: bash install-skills.sh [--latest] [--dry-run] [--check-updates]
+  --latest         install upstream HEAD instead of the versions.lock pins
+  --dry-run        print what would be installed; download and write nothing
+  --check-updates  report upstream drift vs versions.lock (read-only), then exit
+EOS
+}
+
 REF_MODE="pinned"
 MODE="install"
-case "${1:-}" in
-  --latest)        REF_MODE="latest" ;;
-  --check-updates) MODE="check-updates" ;;
-esac
+DRY=0
+for arg in "$@"; do
+  case "${arg}" in
+    --latest)        REF_MODE="latest" ;;
+    --check-updates) MODE="check-updates" ;;
+    --dry-run)       DRY=1 ;;
+    -h|--help)       usage; exit 0 ;;
+    *) warn "unknown argument: ${arg}"; usage; exit 1 ;;
+  esac
+done
 
 IMPECCABLE_VER="$(lock_pin impeccable-cli)"
 IMPECCABLE_PKG="impeccable${IMPECCABLE_VER:+@${IMPECCABLE_VER}}"
@@ -95,7 +110,7 @@ BUNDLED=(
 
 command -v curl >/dev/null 2>&1 || { warn "curl is required but not found."; exit 1; }
 command -v tar  >/dev/null 2>&1 || { warn "tar is required but not found."; exit 1; }
-mkdir -p "${SKILLS_DIR}"
+[ "${DRY}" -eq 1 ] || mkdir -p "${SKILLS_DIR}"
 
 INSTALLED=0
 FAILED=0
@@ -192,6 +207,7 @@ check_updates() {
 
 if [ "${MODE}" = "check-updates" ]; then check_updates; exit 0; fi
 
+[ "${DRY}" -eq 1 ] && bold "DRY RUN — resolving versions only; nothing is downloaded or written"
 bold "Installing design + SEO skills into ${SKILLS_DIR} (${REF_MODE} versions)"
 for entry in "${MANIFEST[@]}"; do
   IFS='|' read -r repo folder name <<< "${entry}"
@@ -205,6 +221,11 @@ for entry in "${MANIFEST[@]}"; do
       continue
     fi
   fi
+  if [ "${DRY}" -eq 1 ]; then
+    ok "would install ${name}  (${repo} @ ${ref:0:7}, ${folder})"
+    INSTALLED=$((INSTALLED+1))
+    continue
+  fi
   if ! root="$(fetch_repo "${repo}" "${ref}")" || [ -z "${root}" ]; then
     FAILED=$((FAILED+1)); FAILED_NAMES="${FAILED_NAMES} ${name}"
     continue
@@ -217,6 +238,16 @@ for entry in "${MANIFEST[@]}"; do
 done
 
 for name in "${BUNDLED[@]}"; do
+  if [ "${DRY}" -eq 1 ]; then
+    if [ -f "${HERE}/skills/${name}/SKILL.md" ]; then
+      ok "would install ${name}  (bundled with this kit)"
+      INSTALLED=$((INSTALLED+1))
+    else
+      warn "bundled skill ${name} missing SKILL.md at ${HERE}/skills/${name}"
+      FAILED=$((FAILED+1)); FAILED_NAMES="${FAILED_NAMES} ${name}"
+    fi
+    continue
+  fi
   if install_skill_folder "${HERE}/skills/${name}" "${name}" "bundled with this kit"; then
     INSTALLED=$((INSTALLED+1))
   else
@@ -225,7 +256,14 @@ for name in "${BUNDLED[@]}"; do
 done
 
 echo
-if [ "${INSTALLED}" -eq 0 ]; then
+if [ "${DRY}" -eq 1 ]; then
+  if [ "${FAILED}" -gt 0 ]; then
+    warn "DRY RUN: ${INSTALLED} would install, but these have problems:${FAILED_NAMES}"
+    exit 1
+  fi
+  ok "DRY RUN: ${INSTALLED} machine-wide skills would install. Re-run without --dry-run to apply."
+  exit 0
+elif [ "${INSTALLED}" -eq 0 ]; then
   warn "Nothing was installed — every skill failed (network?). Fix the issue and re-run."
   exit 1
 elif [ "${FAILED}" -gt 0 ]; then
