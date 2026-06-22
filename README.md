@@ -24,8 +24,9 @@ This kit ships layers 2–3 (your files) and a one-command installer for layer 1
 (it fetches the skills from their upstream authors — it does **not** republish
 anyone's work).
 
-**Requirements:** git, curl, Node 24+ (for `impeccable`). On Windows, run the
-commands in Git Bash or WSL.
+**Requirements:** git, curl, Node 24+ (for `impeccable`). On Windows, use the
+native PowerShell scripts (`bootstrap.ps1` / `install-skills.ps1`) — see
+[Windows](#windows) — or run the bash scripts in Git Bash / WSL.
 
 ---
 
@@ -102,6 +103,24 @@ cp -n template/CLAUDE.md template/PRODUCT.md template/DESIGN.md /path/to/your-pr
 
 # 4. In Claude Code: /plugin → "claude-plugins-official" → install "superpowers"
 ```
+
+### Windows
+
+Native PowerShell scripts mirror the bash ones (same flags, same
+`versions.lock`):
+
+```powershell
+git clone https://github.com/michaelbrowk/SUPERBROWKY.git; cd SUPERBROWKY
+pwsh -File bootstrap.ps1 C:\path\to\your-project
+#   preview / verify / update / remove:
+pwsh -File bootstrap.ps1 C:\path\to\your-project -DryRun
+pwsh -File bootstrap.ps1 C:\path\to\your-project -Check
+pwsh -File install-skills.ps1 -CheckUpdates
+pwsh -File install-skills.ps1 -Uninstall
+```
+
+Needs PowerShell 7+ (`pwsh`), `git`, `tar` (bundled with Windows 10+), and
+Node 24+. Git Bash / WSL users can run the `.sh` scripts instead.
 
 Then, in a **fresh** Claude Code session, **fill them in:** `PRODUCT.md` →
 brand + audience, `DESIGN.md` → the exact values, `CLAUDE.md` → project
@@ -200,6 +219,12 @@ Same for audits: `/impeccable audit`.
 keeps your original pre-kit copy of any same-named skill at
 `~/.claude/skills-backup/`. For the project-level engine, `impeccable` manages
 its own updates: `npx impeccable skills update`.
+
+**How do I remove the kit's skills?** `bash install-skills.sh --uninstall`
+(add `--dry-run` to preview). It removes the kit-managed machine skills and
+restores any pre-kit original it had backed up to `~/.claude/skills-backup/`.
+The per-project `impeccable` is separate — remove it from the project's
+`.claude/skills/` if you want it gone too.
 
 **Does it work for mobile / non-web?** The postulates and the system-first
 rule are stack-agnostic. The design skills lean web, but "tokens/components,

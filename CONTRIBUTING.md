@@ -77,6 +77,16 @@ own a **distinct domain** (a11y, meta, perf, SEO, prose) or refine an existing
 one, not compete for the same triggers. If two skills overlap, say which is
 primary in `template/CLAUDE.md`.
 
+## Cross-platform parity
+
+The kit ships bash (`*.sh`) and PowerShell (`*.ps1`) installers with the same
+flags and the same `versions.lock`. **Any change to a `.sh` script must be
+mirrored in its `.ps1` twin** (manifest rows, flags, behavior). CI parses the
+`.ps1` files and runs their dry-run on `windows-latest`, so a missing mirror or
+a PowerShell syntax error fails the build. When you add a skill, add it to both
+`install-skills.sh`'s `MANIFEST`/`BUNDLED` and `install-skills.ps1`'s
+`$Manifest`/`$Bundled`.
+
 ## House conventions
 
 - UI/microcopy in the templates: no trailing periods on headings or
