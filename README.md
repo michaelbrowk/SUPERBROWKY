@@ -263,6 +263,31 @@ One warning: skills route by description matching. Don't stack five
 general-purpose design engines — curate a small set and declare a primary, or
 output becomes whichever skill won the routing lottery.
 
+### Avoiding skill routing conflicts
+
+Skills fire when their `description` matches the task. Two engines that both
+claim "any UI work" — most commonly `impeccable` and Anthropic's
+`frontend-design` — will compete, and you get whichever won the match, not the
+one you wanted. Same risk if you add another broad taste skill.
+
+The fix is to **declare a primary in your `CLAUDE.md`** so the choice is
+explicit, not luck. The kit's template already names `impeccable` as primary;
+if you install an overlapping engine, make the boundary concrete:
+
+```md
+## Skill precedence (resolve routing conflicts)
+- **Primary design engine: `impeccable`.** It owns project context
+  (PRODUCT.md + DESIGN.md), craft, polish, and audits. Always invoke it for UI.
+- `frontend-design` (if installed): do NOT use for general UI — it overlaps
+  with impeccable. Reserve it for <one specific case, or remove it>.
+- `emil-design-eng` / `high-end-visual-design` *sharpen* impeccable's output
+  (motion, premium polish) — they don't replace it.
+```
+
+Rule of thumb: one primary engine; everything else either owns a **distinct
+domain** (a11y, meta, perf, SEO, prose) or is explicitly a *refiner* of the
+primary. If two skills still fight, narrow or remove one — don't hope.
+
 ---
 
 ## Honest notes
