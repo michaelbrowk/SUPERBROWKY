@@ -17,6 +17,7 @@
 set -euo pipefail
 
 HERE="$(cd "$(dirname "$0")" && pwd)"
+LOCK_FILE="${HERE}/versions.lock"
 TARGET="${1:-}"
 LATEST_FLAG=""
 [ "${2:-}" = "--latest" ] && LATEST_FLAG="--latest"
@@ -24,6 +25,16 @@ LATEST_FLAG=""
 ok()   { printf '\033[0;32m✓ %s\033[0m\n' "$1"; }
 warn() { printf '\033[1;33m⚠ %s\033[0m\n' "$1" >&2; }
 bold() { printf '\033[1m%s\033[0m\n' "$1"; }
+
+# Resolve a pinned value from versions.lock by key. Echoes the value or nothing.
+lock_pin() { # $1=key
+  [ -f "${LOCK_FILE}" ] || return 0
+  local k v
+  while IFS='=' read -r k v; do
+    case "${k}" in \#*|'') continue ;; esac
+    if [ "${k}" = "$1" ]; then printf '%s' "${v}"; return 0; fi
+  done < "${LOCK_FILE}"
+}
 
 if [ ! -f "${HERE}/install-skills.sh" ] || [ ! -d "${HERE}/template" ]; then
   warn "bootstrap.sh must run from a full clone of the kit:"
@@ -59,7 +70,8 @@ bash "${HERE}/install-skills.sh" ${LATEST_FLAG:+"${LATEST_FLAG}"}
 
 echo
 bold "3/3 · Installing impeccable into ${TARGET}"
-IMPECCABLE_PKG="impeccable@2.3.2"
+IMPECCABLE_VER="$(lock_pin impeccable-cli)"
+IMPECCABLE_PKG="impeccable${IMPECCABLE_VER:+@${IMPECCABLE_VER}}"
 [ -n "${LATEST_FLAG}" ] && IMPECCABLE_PKG="impeccable"
 if command -v npx >/dev/null 2>&1; then
   if (cd "${TARGET}" && npx -y "${IMPECCABLE_PKG}" skills install --yes); then

@@ -1,0 +1,21 @@
+# Claude Code Design Kit — pinned versions (single source of truth).
+#
+# install-skills.sh and bootstrap.sh read their pins from here. Bumping a
+# version means editing ONE line, not hunting through the scripts.
+#
+# Check for upstream drift (read-only, edits nothing):
+#   bash install-skills.sh --check-updates
+# Ride the latest instead of these pins (may break — see README):
+#   bash install-skills.sh --latest   /   bash bootstrap.sh <proj> --latest
+#
+# Format: <key>=<value>, one per line. Keys are repo slugs (owner/name) for
+# skill sources, plus impeccable-cli for the per-project engine's npm version.
+
+# --- Upstream skill repos (commit SHA — verified known-good) ---
+emilkowalski/skill=ecf66bbd1fb33c25332b6b0e454d08049978284c
+Leonxlnx/taste-skill=1a6dc0a5ac5d0152120938bf66ed67ea2ec8e552
+coreyhaines31/marketingskills=7f4af1ea8e7809e0142c55bf19243a706f539c25
+hardikpandya/stop-slop=8da1f030185bdfe8471220585162991eaeb970e9
+
+# --- Per-project engine (npm) ---
+impeccable-cli=2.3.2
