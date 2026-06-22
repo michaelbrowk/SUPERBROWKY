@@ -70,18 +70,27 @@ IMPECCABLE_PKG="impeccable${IMPECCABLE_VER:+@${IMPECCABLE_VER}}"
 # an output-behavior override) — we install only the skills the kit documents.
 # See README "Optional extras" if you want the rest.
 MANIFEST=(
+  # Taste engine
   "emilkowalski/skill|skills/emil-design-eng|emil-design-eng"
   "Leonxlnx/taste-skill|skills/taste-skill|design-taste-frontend"
   "Leonxlnx/taste-skill|skills/soft-skill|high-end-visual-design"
   "Leonxlnx/taste-skill|skills/redesign-skill|redesign-existing-projects"
+  # Ship-clean — findability (SEO) + prose
   "coreyhaines31/marketingskills|skills/seo-audit|seo-audit"
   "coreyhaines31/marketingskills|skills/ai-seo|ai-seo"
   "coreyhaines31/marketingskills|skills/schema|schema"
+  "coreyhaines31/marketingskills|skills/programmatic-seo|programmatic-seo"
+  "coreyhaines31/marketingskills|skills/site-architecture|site-architecture"
+  "coreyhaines31/marketingskills|skills/cro|cro"
+  "hardikpandya/stop-slop|.|stop-slop"
 )
 
 # Skills bundled in this repo (the kit author's own work, MIT like the kit).
+# Ship-clean — performance, accessibility, pre-ship meta.
 BUNDLED=(
   "psi-optimize"
+  "a11y-audit"
+  "meta-audit"
 )
 
 command -v curl >/dev/null 2>&1 || { warn "curl is required but not found."; exit 1; }
@@ -248,10 +257,6 @@ EOS
 echo
 bold "Optional extras (not auto-installed — see README for the full list):"
 cat <<'EOS'
-  • stop-slop                 — strips AI tells from prose. MIT, Hardik Pandya,
-                                github.com/hardikpandya/stop-slop
-  • programmatic-seo,         — more from Corey Haines' MIT marketingskills
-    site-architecture, cro      repo (add the folders to the manifest)
   • minimalist-ui /           — opinionated style packs from Leonxlnx/taste-skill
     industrial-brutalist-ui     (re-run with the folders added to the manifest)
   • gstack design suite       — /design-review, /design-shotgun. MIT, Garry Tan.
