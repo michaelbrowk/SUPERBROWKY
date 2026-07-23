@@ -1,0 +1,16 @@
+name	profiles	source_type	repo	pin_key	claude_upstream_folder	codex_upstream_folder	license	required
+impeccable	core	git	pbakaus/impeccable	pbakaus/impeccable	.claude/skills/impeccable	.agents/skills/impeccable	Apache-2.0	yes
+emil-design-eng	core	git	emilkowalski/skills	emilkowalski/skills	skills/emil-design-eng	skills/emil-design-eng	MIT	yes
+design-taste-frontend	core	git	Leonxlnx/taste-skill	Leonxlnx/taste-skill	skills/taste-skill	skills/taste-skill	MIT	yes
+stop-slop	core	git	hardikpandya/stop-slop	hardikpandya/stop-slop	.	.	MIT	yes
+psi-optimize	core	bundled	.	-	skills/psi-optimize	skills/psi-optimize	MIT	yes
+a11y-audit	core	bundled	.	-	skills/a11y-audit	skills/a11y-audit	MIT	yes
+meta-audit	core	bundled	.	-	skills/meta-audit	skills/meta-audit	MIT	yes
+seo-audit	web-launch	git	coreyhaines31/marketingskills	coreyhaines31/marketingskills	skills/seo-audit	skills/seo-audit	MIT	yes
+schema	web-launch	git	coreyhaines31/marketingskills	coreyhaines31/marketingskills	skills/schema	skills/schema	MIT	yes
+site-architecture	web-launch	git	coreyhaines31/marketingskills	coreyhaines31/marketingskills	skills/site-architecture	skills/site-architecture	MIT	yes
+ai-seo	growth	git	coreyhaines31/marketingskills	coreyhaines31/marketingskills	skills/ai-seo	skills/ai-seo	MIT	yes
+programmatic-seo	growth	git	coreyhaines31/marketingskills	coreyhaines31/marketingskills	skills/programmatic-seo	skills/programmatic-seo	MIT	yes
+cro	growth	git	coreyhaines31/marketingskills	coreyhaines31/marketingskills	skills/cro	skills/cro	MIT	yes
+high-end-visual-design	full	git	Leonxlnx/taste-skill	Leonxlnx/taste-skill	skills/soft-skill	skills/soft-skill	MIT	yes
+redesign-existing-projects	full	git	Leonxlnx/taste-skill	Leonxlnx/taste-skill	skills/redesign-skill	skills/redesign-skill	MIT	yes

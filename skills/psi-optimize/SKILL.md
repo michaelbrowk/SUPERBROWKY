@@ -1,11 +1,19 @@
 ---
 name: psi-optimize
-description: Audit PageSpeed Insights / Lighthouse findings and fix them end-to-end. Compresses oversized images (sharp — re-encode to WebP, resize to display dimensions), wires LCP preload + fetchpriority, adds preconnect hints for third-party origins, converts below-fold <img> to lazy, defers non-critical JS, and applies framework-specific patterns (Next.js, Vite/SvelteKit, Astro, plain HTML). Use when user mentions PageSpeed Insights, PSI, Lighthouse, Core Web Vitals, LCP, FCP, CLS, TBT, INP, slow page, performance audit, image compression, or "why is my site slow".
-user-invocable: true
-argument-hint: "[url]"
+description: Audit PageSpeed Insights or Lighthouse findings and, only when the user asks, implement measured performance fixes. Covers oversized images, WebP or AVIF encoding, LCP discovery, preconnects, lazy loading, non-critical JavaScript, Core Web Vitals, and framework-specific patterns. Use for PageSpeed Insights, PSI, Lighthouse, LCP, FCP, CLS, TBT, INP, slow pages, performance audits, or image compression.
 ---
 
 # PSI-Optimize — PageSpeed compliance + image compression
+
+## Portable safety contract
+
+- Resolve `SKILL_DIR` to the directory containing this `SKILL.md`; run bundled
+  helpers as `node "$SKILL_DIR/scripts/<name>.mjs"`.
+- Audit and diagnosis are read-only. Edit or recompress assets only when the
+  user explicitly asks for fixes.
+- The image helper defaults to dry-run. `--apply` is required for file writes.
+- Do not install Lighthouse, `sharp`, or other packages without showing the
+  planned dependency change and receiving approval.
 
 Web perf audit-and-fix workflow focused on what PSI actually measures and what will actually move the score. Opinionated. Hands-on. Measured.
 
@@ -41,18 +49,19 @@ If the user shows you a PSI screenshot instead, read **Est Savings** per finding
 
 ### 2. Diagnose — map findings to fixes
 
-Common PSI findings and the files/patterns to target. For detail per finding, read `references/fixes-catalog.md`.
+Common PSI findings and the files/patterns to target. For detail per finding,
+read the [fix catalog](references/fixes-catalog.md).
 
 | PSI finding | Root cause to look for | See |
 |---|---|---|
-| Improve image delivery | Oversized PNG/JPG, raw `<video poster>`, non-optimized hero | `references/images.md` |
-| LCP request discovery | Missing `fetchpriority=high`, missing `<link rel=preload>` | `references/fixes-catalog.md#lcp-discovery` |
-| Render blocking requests | Fonts without `font-display: swap`, non-inlined critical CSS, blocking scripts | `references/fixes-catalog.md#render-blocking` |
-| Avoid chaining critical requests | Missing preconnect to third-party origins | `references/fixes-catalog.md#preconnect` |
-| Efficient cache lifetimes | Short `Cache-Control max-age` on static assets | `references/fixes-catalog.md#cache` |
-| Unused JavaScript | Unsplit bundles, vendor chunks loaded everywhere | `references/framework-nextjs.md` (dynamic imports, route-level splits) |
+| Improve image delivery | Oversized PNG/JPG, raw `<video poster>`, non-optimized hero | [Image delivery](references/images.md) |
+| LCP request discovery | Missing `fetchpriority=high`, missing `<link rel=preload>` | [LCP request discovery](references/fixes-catalog.md#lcp-request-discovery) |
+| Render blocking requests | Fonts without `font-display: swap`, non-inlined critical CSS, blocking scripts | [Render-blocking requests](references/fixes-catalog.md#render-blocking-requests) |
+| Avoid chaining critical requests | Missing preconnect to third-party origins | [Preconnect](references/fixes-catalog.md#avoid-chaining-critical-requests-preconnect) |
+| Efficient cache lifetimes | Short `Cache-Control max-age` on static assets | [Cache lifetimes](references/fixes-catalog.md#efficient-cache-lifetimes) |
+| Unused JavaScript | Unsplit bundles, vendor chunks loaded everywhere | [Next.js splits](references/framework-nextjs.md#unused-javascript-and-route-level-splits) |
 | Forced reflow | `offsetWidth`/`getBoundingClientRect` reads after DOM writes | Requires Chrome DevTools profiling — no one-shot fix |
-| CLS / Layout shift | `<img>` without width/height, late-mounting fonts, web-font swap flash | `references/fixes-catalog.md#cls` |
+| CLS / Layout shift | `<img>` without width/height, late-mounting fonts, web-font swap flash | [CLS](references/fixes-catalog.md#cumulative-layout-shift-cls) |
 
 ### 3. Fix — per category
 
@@ -78,26 +87,33 @@ The skill ships with `scripts/compress-images.mjs` — a reusable sharp-based wa
 
 ```bash
 # Dry-run audit — shows every file and predicted savings, writes nothing
-node ~/.claude/skills/psi-optimize/scripts/compress-images.mjs --dry apps/web/public/assets
+node "$SKILL_DIR/scripts/compress-images.mjs" apps/web/public/assets
 
 # Apply in place — backs up nothing; run on a clean git tree so you can revert
-node ~/.claude/skills/psi-optimize/scripts/compress-images.mjs apps/web/public/assets
+node "$SKILL_DIR/scripts/compress-images.mjs" --apply apps/web/public/assets
 
 # Narrow to one file, custom quality/size
-node ~/.claude/skills/psi-optimize/scripts/compress-images.mjs --quality 88 --max-width 1440 path/to/hero.png
+node "$SKILL_DIR/scripts/compress-images.mjs" --apply --quality 88 --max-width 1440 path/to/hero.png
 
 # Convert PNG/JPG to .webp sibling (keeps original)
-node ~/.claude/skills/psi-optimize/scripts/compress-images.mjs --emit-webp path/to/hero.png
+node "$SKILL_DIR/scripts/compress-images.mjs" --apply --emit-webp path/to/hero.png
+
+# Existing siblings are preserved by default. To replace one, preview first,
+# then use the explicit flag; replacement occurs only if the candidate is smaller.
+node "$SKILL_DIR/scripts/compress-images.mjs" --emit-webp --overwrite-existing path/to/hero.png
+node "$SKILL_DIR/scripts/compress-images.mjs" --apply --emit-webp --overwrite-existing path/to/hero.png
 
 # Emit .avif siblings (~20% smaller than WebP, slower encode/decode) — good for
 # below-the-fold photos; keep the LCP hero on WebP. --emit-avif wins over --emit-webp.
-node ~/.claude/skills/psi-optimize/scripts/compress-images.mjs --emit-avif public/gallery
+node "$SKILL_DIR/scripts/compress-images.mjs" --apply --emit-avif public/gallery
 ```
 
 Rules the script enforces:
 - Never replaces a file if the new encode is larger
 - Skips assets under 20KB (noise, not worth it)
 - Honors `--dry` strictly — no writes
+- Never follows symlinks outside the selected tree
+- Preserves an existing emitted sibling unless `--overwrite-existing` is explicit
 - Reports bytes before/after and percent per file
 - On replace, preserves mtime and permissions
 
@@ -109,7 +125,8 @@ If PSI flags the LCP as a video poster and it's a PNG:
 2. Swap the poster URL in code
 3. Add `<link rel="preload" as="image" href="<poster>.webp" fetchPriority="high">` in the page head — browser starts fetching at HTML parse, not when it discovers `<video>` downstream
 
-See `references/framework-nextjs.md#video-poster-lcp` for the Next.js App Router pattern.
+See [Video poster LCP](references/framework-nextjs.md#video-poster-lcp) for the
+Next.js App Router pattern.
 
 ## LCP checklist
 
@@ -175,9 +192,9 @@ PSI console error audit flags `Minified React error #418` — hydration mismatch
 
 ## Framework-specific patterns
 
-- **Next.js 13+ App Router:** `references/framework-nextjs.md`
-- **Vite / SvelteKit / Astro:** `references/framework-vite.md`
-- **Plain HTML / Webflow / WordPress:** apply generic recipes from `references/fixes-catalog.md`
+- **Next.js 13+ App Router:** [Next.js patterns](references/framework-nextjs.md)
+- **Vite / SvelteKit / Astro:** [Vite, SvelteKit, and Astro patterns](references/framework-vite.md)
+- **Plain HTML / Webflow / WordPress:** apply recipes from the [generic fix catalog](references/fixes-catalog.md)
 
 ## What NOT to optimise
 
@@ -197,4 +214,6 @@ If the post-fix measurement doesn't show the expected delta, the fix didn't land
 
 ## Output format for reports
 
-When summarising what you did for a user, use a markdown table with before/after/saving columns. Example in `references/report-template.md`.
+When summarising what you did for a user, use a markdown table with
+before/after/saving columns. Start with the
+[report template](references/report-template.md).

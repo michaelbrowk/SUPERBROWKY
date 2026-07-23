@@ -1,11 +1,19 @@
 ---
 name: a11y-audit
-description: Audit web accessibility against WCAG 2.1 AA and fix the findings end-to-end. Runs axe-core / Lighthouse / pa11y, then fixes the common failures — missing alt text and accessible names, contrast below 4.5:1, no visible focus, unlabelled form controls, broken heading order, missing lang, no skip link, motion that ignores prefers-reduced-motion, keyboard traps. Use when the user mentions accessibility, a11y, WCAG, axe, screen reader, keyboard navigation, focus, contrast, aria, alt text, "is this accessible", or an accessibility audit/lawsuit/VPAT.
-user-invocable: true
-argument-hint: "[url]"
+description: Audit web accessibility against WCAG 2.1 AA and, only when the user asks, fix the findings. Covers axe or Lighthouse evidence, alt text and accessible names, contrast, visible focus, labels, headings, language, reduced motion, keyboard operation, and screen-reader checks. Use for accessibility, a11y, WCAG, axe, screen reader, keyboard navigation, focus, contrast, aria, alt text, accessibility audits, or VPAT preparation.
 ---
 
 # a11y-audit — WCAG compliance + fix loop
+
+## Portable safety contract
+
+- Resolve `SKILL_DIR` to the directory containing this `SKILL.md`; run bundled
+  helpers as `node "$SKILL_DIR/scripts/<name>.mjs"`.
+- An audit is read-only. Edit project files only when the user explicitly asks
+  for fixes.
+- Prefer already-installed scanners. `npx -y` downloads and executes remote
+  packages; show that action and obtain approval before using it.
+- A scanner pass is evidence, never a claim that the product is accessible.
 
 The accessibility half of "ship clean". A page can be beautiful, fast, and
 found and still fail the bar if a keyboard user can't operate it or a
@@ -39,16 +47,16 @@ not optional — they catch what no scanner can.
 ### 1. Measure
 
 ```bash
-# axe-core CLI — the standard. No install needed via npx.
-npx -y @axe-core/cli <URL> --tags wcag2a,wcag2aa
+# If already installed:
+axe <URL> --tags wcag2a,wcag2aa
 
 # Lighthouse accessibility category (also gives a single score)
-npx -y lighthouse <URL> --only-categories=accessibility --output=json \
+lighthouse <URL> --only-categories=accessibility --output=json \
   --output-path=/tmp/a11y.json --quiet \
   && node -e 'const a=require("/tmp/a11y.json").audits;Object.values(a).filter(x=>x.score!==null&&x.score<1).forEach(x=>console.log(x.score,x.id))'
 
 # pa11y — fallback, uses HTML CodeSniffer ruleset
-npx -y pa11y --standard WCAG2AA <URL>
+pa11y --standard WCAG2AA <URL>
 ```
 
 If the project is a component library or there's no running URL, scan source
@@ -98,13 +106,13 @@ Use the bundled checker (pure Node, no deps) before hand-picking any color:
 
 ```bash
 # explicit foreground:background pairs
-node ~/.claude/skills/a11y-audit/scripts/contrast-check.mjs "#6b7280:#ffffff" "#111827:#fff"
+node "$SKILL_DIR/scripts/contrast-check.mjs" "#6b7280:#ffffff" "#111827:#fff"
 
 # scan a token file — pairs every --text-*/--fg-* against every --bg-*/--surface-*
-node ~/.claude/skills/a11y-audit/scripts/contrast-check.mjs --css app/globals.css
+node "$SKILL_DIR/scripts/contrast-check.mjs" --css app/globals.css
 
 # large text (≥24px, or ≥19px bold) uses the 3:1 line
-node ~/.claude/skills/a11y-audit/scripts/contrast-check.mjs --large "#9ca3af:#fff"
+node "$SKILL_DIR/scripts/contrast-check.mjs" --large "#9ca3af:#fff"
 ```
 
 It prints the real ratio + AA/AAA verdict and **exits non-zero on any AA
@@ -114,20 +122,23 @@ token so the ratio passes, and fix it in `DESIGN.md`, not at the call site.
 
 ## Static scan (no running URL)
 
-Grep the source for the cheap wins before any browser run:
+Search the source for cheap review leads before any browser run. These commands
+intentionally return candidates rather than pretending a regular expression can
+parse JSX:
 
 ```bash
-# <img> without alt (flag for review — some may be legit decorative)
-grep -rnE '<img(?![^>]*\balt=)' src --include=*.tsx --include=*.jsx --include=*.html
+# Review image markup for missing or incorrect alt behavior
+rg -n '<img\b|<Image\b' src
 
 # outline:none / outline:0 — must be paired with a :focus-visible style
-grep -rnE 'outline:\s*(none|0)' src
+rg -n 'outline:\s*(none|0)' src
 
-# icon-only buttons/links with no aria-label (heuristic — review hits)
-grep -rnE '<(button|a)[^>]*>\s*<(svg|Icon|i)\b' src
+# Review icon-bearing controls for accessible names
+rg -n '<(button|a)\b|aria-label|<svg\b|<Icon\b' src
 ```
 
-These are leads, not verdicts — confirm in the rendered DOM.
+If `rg` is unavailable, use the repository's normal search tool. These are
+leads, not verdicts — confirm in the rendered DOM.
 
 ## What NOT to chase
 

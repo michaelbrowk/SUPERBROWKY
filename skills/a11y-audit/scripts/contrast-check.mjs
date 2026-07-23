@@ -29,10 +29,26 @@ for (let i = 0; i < args.length; i++) {
   const a = args[i];
   if (a === "--large") opt.large = true;
   else if (a === "--json") opt.json = true;
-  else if (a === "--threshold") opt.threshold = parseFloat(args[++i]);
-  else if (a === "--css") opt.css = args[++i];
+  else if (a === "--threshold") {
+    const raw = args[++i];
+    if (raw === undefined) fail("--threshold needs a number");
+    opt.threshold = Number(raw);
+  } else if (a === "--css") {
+    const raw = args[++i];
+    if (raw === undefined) fail("--css needs a file");
+    opt.css = raw;
+  }
   else if (a.startsWith("--")) fail(`unknown flag: ${a}`);
   else opt.pairs.push(a);
+}
+if (opt.threshold !== null && (!Number.isFinite(opt.threshold) || opt.threshold <= 0 || opt.threshold > 21)) {
+  fail("--threshold must be a finite number greater than 0 and at most 21");
+}
+if (opt.css && opt.pairs.length) {
+  fail("use either --css or explicit fg:bg pairs, not both");
+}
+if (!opt.css && opt.pairs.length === 0) {
+  fail("provide at least one fg:bg pair or --css <file>");
 }
 const AA = opt.threshold ?? (opt.large ? 3 : 4.5);
 const AAA = opt.large ? 4.5 : 7;
@@ -42,23 +58,41 @@ function fail(msg) {
   process.exit(2);
 }
 
-// --- color parsing → [r,g,b] 0..255, ignores alpha (contrast is opaque) ---
+// --- color parsing → [r,g,b] 0..255 ---
+// Alpha colors need a known backdrop before their contrast can be computed.
+// Reject them instead of silently treating translucent pixels as opaque.
 function parseColor(raw) {
   const s = raw.trim().toLowerCase();
   let m;
-  if ((m = s.match(/^#([0-9a-f]{3,4})$/))) {
+  if (/^#[0-9a-f]{4}$|^#[0-9a-f]{8}$/.test(s) || /^rgba\(/.test(s)) {
+    fail(`alpha color "${raw}" needs compositing against its real backdrop first`);
+  }
+  if ((m = s.match(/^#([0-9a-f]{3})$/))) {
     const h = m[1];
     return [h[0], h[1], h[2]].map((c) => parseInt(c + c, 16));
   }
-  if ((m = s.match(/^#([0-9a-f]{6}|[0-9a-f]{8})$/))) {
+  if ((m = s.match(/^#([0-9a-f]{6})$/))) {
     const h = m[1];
     return [0, 2, 4].map((i) => parseInt(h.slice(i, i + 2), 16));
   }
-  if ((m = s.match(/^rgba?\(([^)]+)\)$/))) {
-    const parts = m[1].split(/[ ,/]+/).filter(Boolean).slice(0, 3);
-    return parts.map((p) =>
-      p.endsWith("%") ? Math.round((parseFloat(p) / 100) * 255) : parseInt(p, 10),
-    );
+  if ((m = s.match(/^rgb\(([^)]+)\)$/))) {
+    if (m[1].includes("/")) {
+      fail(`alpha color "${raw}" needs compositing against its real backdrop first`);
+    }
+    const parts = m[1].trim().split(/[ ,]+/).filter(Boolean);
+    if (parts.length !== 3) return null;
+    const channels = parts.map((part) => {
+      if (/^(?:\d+(?:\.\d+)?|\.\d+)%$/.test(part)) {
+        const percent = Number.parseFloat(part);
+        return percent >= 0 && percent <= 100
+          ? Math.round((percent / 100) * 255)
+          : null;
+      }
+      if (!/^(?:\d+(?:\.\d+)?|\.\d+)$/.test(part)) return null;
+      const value = Number.parseFloat(part);
+      return value >= 0 && value <= 255 ? Math.round(value) : null;
+    });
+    return channels.every((channel) => channel !== null) ? channels : null;
   }
   return null;
 }
@@ -80,8 +114,11 @@ function ratio(fg, bg) {
 function buildPairs() {
   if (opt.css) return pairsFromCss(opt.css);
   return opt.pairs.map((tok) => {
-    const [fg, bg] = tok.split(":");
-    if (!fg || !bg) fail(`bad pair "${tok}" — expected fg:bg`);
+    const parts = tok.split(":");
+    if (parts.length !== 2 || !parts[0] || !parts[1]) {
+      fail(`bad pair "${tok}" — expected exactly fg:bg`);
+    }
+    const [fg, bg] = parts;
     return { label: tok, fg: must(fg), bg: must(bg) };
   });
 }

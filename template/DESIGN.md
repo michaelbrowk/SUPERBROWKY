@@ -1,20 +1,28 @@
 # Design System
 
-> ⚠ PLACEHOLDERS PRESENT — Claude: if you can read this line, this file hasn't
-> been filled in yet. STOP and fill it with the user (or run
-> `/impeccable document` to harvest values from existing code) before any
-> visual work.
+> ⚠ PLACEHOLDERS PRESENT — this file has not been filled in yet. For mutating
+> visual work, fill the relevant sections with the user or extract a proposal
+> from existing code. A read-only audit may continue if it clearly states the
+> missing context.
 >
-> The visual constitution: exact values, hard caps, banned patterns. Claude
-> reads it before any visual code; the `impeccable` skill reads it too.
-> **If a value isn't in here (or in the token files it points to), it doesn't
-> exist — never invent a hex.** `/impeccable document` can draft the values
-> from existing code, but it proposes a different (Stitch) section layout —
-> MERGE its values into the sections below; never let it replace this file.
-> Atmosphere / Voice / Banned patterns are what the design-lint pass checks.
-> Keep this file and the code tokens in lockstep — when they disagree,
-> reconcile immediately; two sources of truth WILL drift. Delete this quote
-> block when the file is real.
+> This becomes the accepted visual system after human review. Before that,
+> generated values are proposals, not rules. Concrete values belong in token
+> definitions; feature code consumes those tokens. If this file, code, and the
+> current design source disagree, record `CONFLICT` and resolve it instead of
+> silently choosing a winner. Delete this quote block when the file is real.
+
+## Authority
+
+- **Artifact ID:** <stable ID, e.g. DESIGN-v1>
+- **Version:** <version, e.g. 1.0>
+- **Status:** DRAFT_PROPOSAL | ACCEPTED | SUPERSEDED
+- **Accepted by:** <human name, or not yet accepted>
+- **Accepted on:** <YYYY-MM-DD, or not yet accepted>
+- **Decision reference:** <Decision.md entry, or none>
+
+Only a human decision may set `Status` to `ACCEPTED`. Until then, values below
+are proposals and may be used for explicitly authorized exploration, not as
+canonical rules.
 
 ## Atmosphere
 
@@ -24,8 +32,8 @@ guessing what "minimal-ish" means.
 - **Density:** <N>/10 — <e.g. 3/10 "art-gallery airy" / 8/10 "trading-terminal dense">
 - **Loudness:** <N>/10 — <how much the UI is allowed to shout; what earns emphasis>
 - **Motion:** <N>/10 — <e.g. 2/10 "almost still" / 7/10 "fluid springs everywhere">
-- **Light or dark:** <which, and WHY — derived from the audience + viewing
-  context ("used courtside at night → dark only"), not a default>
+- **Supported appearance:** <light, dark, or both, and WHY — derived from the
+  audience + viewing context rather than a generic default>
 - **References with roles:** <2–3 products and what each contributes — e.g.
   "Vercel structurally, Linear for density, Raycast grants permission for hero
   moments". Roles beat vibes.>
@@ -34,34 +42,36 @@ guessing what "minimal-ish" means.
 
 ## Color
 
-Tokens live in: `<path — e.g. tokens.css / theme.ts / Theme.swift>`. Roles, not
-hexes, in code; this table is the only place hex values are written by hand.
+Canonical runtime values live in:
+`<path — e.g. tokens.css / theme.ts / Theme.swift>`.
+This file defines accepted roles, intent, and constraints; it does not keep a
+second hand-maintained copy of runtime hex values. Any accepted color change
+updates the token source and this role map in the same reviewed change.
 
-| Role | Token | Value | Notes |
+| Role | Token | Intent | Constraints |
 |---|---|---|---|
-| Background | <token> | <hex> | <never pure #000 / #fff unless the brand says so> |
-| Surface / card | <token> | <hex> | |
-| Text primary | <token> | <hex> | |
-| Text muted | <token> | <hex> | |
-| Accent | <token> | <hex> | ~10% of visual weight, by design |
-| Destructive / status | <token> | <hex> | functional ONLY — see rule below |
+| Background | <token> | <visual role> | <e.g. avoid pure black/white unless intentional> |
+| Surface / card | <token> | <visual role> | |
+| Text primary | <token> | <visual role> | <contrast target> |
+| Text muted | <token> | <visual role> | <contrast target> |
+| Accent | <token> | <intended emphasis> | <where it may appear> |
+| Destructive / status | <token> | state communication | functional only |
 
 Rules:
-- **One accent per screen.** The accent appears on the primary action and
-  earned moments — never for polish or decoration.
+- **Accent policy:** <one restrained accent, a committed brand color, a full
+  palette, or another accepted strategy; state where each role may appear>.
 - **Functional colors communicate state, never ornament.** Red/green/amber may
   only appear when something IS in that state; a resting screen is neutral.
-- **Never invent a hex.** If nothing in the table fits, the design is wrong —
-  flag it, don't improvise.
+- **Never hide an invented hex in feature code.** If no token fits, propose a
+  token-system change and get it accepted before implementation.
 - **Gradients:** <policy — e.g. "one gradient, one purpose: the primary CTA.
   When the gradient is scarce, it's valuable." Or "none.">
 
 ## Typography
 
-Fonts: <display + body pairing. Avoid the AI defaults (Inter, Space Grotesk,
-Fraunces, Syne…) unless the brand genuinely chose them.> Weights allowed:
-<a strict, small set — e.g. 400 / 510 / 590. Emphasis via size or color, NEVER
-by escalating weight.>
+Fonts: <display + body pairing, chosen for the product, language coverage,
+performance, licensing, and brand rather than novelty alone.> Weights allowed:
+<a deliberate set — e.g. 400 / 510 / 590. Explain how emphasis works.>
 
 The registers — a **closed set**. Adding one is a design decision, not a
 styling shortcut:
@@ -121,8 +131,9 @@ library, not into a page/screen file — every new screen is born on-system.
 
 ## Banned patterns
 
-The AI Slop Test, operationalized. Check every diff against this list; add the
-tells you keep catching. Starter set — **delete what your brand actually wants**:
+Candidate failure patterns to review with the human. They become binding only
+after this file is accepted. Delete anything the brand intentionally uses and
+add category-specific traps:
 
 - Purple/cyan gradients on dark; gradient text; glassmorphism as decoration
 - Three equal feature cards in a row (use asymmetric layouts); icon-in-colored-
@@ -141,8 +152,9 @@ tells you keep catching. Starter set — **delete what your brand actually wants
 
 ## Evolution
 
-Append-only log of deliberate changes (what + why + date). This file outranks
-older plans, memories, and screenshots — if code and this file disagree,
-reconcile here, don't fork.
+Append-only log of accepted changes (what + why + date). It supersedes older
+plans, memories, and screenshots. If code and this file disagree, record the
+conflict and resolve it deliberately rather than silently forking either
+source.
 
 - <date> — initial system.

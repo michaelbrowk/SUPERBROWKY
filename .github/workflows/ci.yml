@@ -8,87 +8,205 @@ on:
 permissions:
   contents: read
 
-jobs:
-  shell:
-    name: shellcheck + syntax
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-      - name: bash -n (syntax)
-        run: |
-          bash -n bootstrap.sh
-          bash -n install-skills.sh
-      - name: shellcheck
-        uses: ludeeus/action-shellcheck@master
-        with:
-          severity: error
-          scandir: "."
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
 
-  scripts:
-    name: node scripts + dry-run smoke
+jobs:
+  validate:
+    name: Static validation
     runs-on: ubuntu-latest
+    timeout-minutes: 10
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - name: Node.js 24
+        uses: actions/setup-node@53b83947a5a98c8d113130e565377fae1a50d02f # v6.3.0
         with:
           node-version: "24"
-      - name: node --check (bundled scripts parse)
+          package-manager-cache: false
+
+      - name: Install ShellCheck
         run: |
-          node --check skills/a11y-audit/scripts/contrast-check.mjs
-          node --check skills/meta-audit/scripts/meta-scan.mjs
-      - name: contrast-check unit (pass exits 0, fail exits 1)
+          sudo apt-get update
+          sudo apt-get install --yes shellcheck
+
+      - name: Validate manifest and skill packages
+        run: |
+          python3 scripts/validate-manifest.py
+          python3 scripts/validate-skills.py
+          python3 tests/validate-skills-fixture.py
+
+      - name: Parse and lint Bash
+        run: |
+          bash -n bootstrap.sh install-skills.sh scripts/*.sh tests/lifecycle.sh
+          shellcheck -S warning \
+            bootstrap.sh install-skills.sh scripts/*.sh tests/lifecycle.sh
+
+      - name: Parse bundled JavaScript
+        run: |
+          find skills -type f -name '*.mjs' -print0 \
+            | sort -z \
+            | xargs -0 -n1 node --check
+          node --check tests/meta-scan-fixture.mjs
+          node --check tests/compress-images-fixture.mjs
+
+      - name: Helper behavior
         run: |
           node skills/a11y-audit/scripts/contrast-check.mjs "#111827:#ffffff"
           if node skills/a11y-audit/scripts/contrast-check.mjs "#ffffff:#ffffff"; then
-            echo "expected non-zero exit on a failing contrast pair"; exit 1
+            echo "expected a failing contrast pair to return non-zero"
+            exit 1
           fi
-      - name: dry-run smoke (offline — downloads nothing)
-        run: |
-          proj="$(mktemp -d)"
-          bash install-skills.sh --dry-run
-          bash bootstrap.sh "$proj" --dry-run
-          # dry-run must not write into the target
-          [ -z "$(ls -A "$proj")" ] || { echo "dry-run wrote to target"; exit 1; }
+          if node skills/a11y-audit/scripts/contrast-check.mjs "rgb(999,999,999):#ffffff"; then
+            echo "expected out-of-range rgb() to be rejected"
+            exit 1
+          fi
+          if node skills/a11y-audit/scripts/contrast-check.mjs "rgb(0 0 0 / .5):#ffffff"; then
+            echo "expected alpha rgb() to be rejected"
+            exit 1
+          fi
+          if node skills/a11y-audit/scripts/contrast-check.mjs; then
+            echo "expected empty input to be rejected"
+            exit 1
+          fi
+          if node skills/a11y-audit/scripts/contrast-check.mjs --threshold -1 "#fff:#fff"; then
+            echo "expected an invalid threshold to be rejected"
+            exit 1
+          fi
+          if node skills/a11y-audit/scripts/contrast-check.mjs "#000:#fff:#f00"; then
+            echo "expected a malformed pair to be rejected"
+            exit 1
+          fi
+          node skills/psi-optimize/scripts/compress-images.mjs --help
+          node skills/meta-audit/scripts/meta-scan.mjs --help
+          node tests/meta-scan-fixture.mjs
+          node tests/compress-images-fixture.mjs
 
-  windows:
-    name: PowerShell parity (parse + dry-run)
-    runs-on: windows-latest
-    steps:
-      - uses: actions/checkout@v4
-      - name: parse .ps1 (syntax)
-        shell: pwsh
-        run: |
-          foreach ($f in "install-skills.ps1","bootstrap.ps1") {
-            $errs = $null
-            [void][System.Management.Automation.Language.Parser]::ParseFile((Resolve-Path $f), [ref]$null, [ref]$errs)
-            if ($errs) { $errs | ForEach-Object { Write-Host $_ }; exit 1 }
-            Write-Host "ok: $f parses"
-          }
-      - name: dry-run smoke (offline)
-        shell: pwsh
-        run: |
-          ./install-skills.ps1 -DryRun
-          $proj = Join-Path $env:TEMP ([guid]::NewGuid())
-          New-Item -ItemType Directory -Path $proj | Out-Null
-          ./bootstrap.ps1 $proj -DryRun
-          if (Get-ChildItem $proj) { Write-Host "dry-run wrote to target"; exit 1 }
-          Write-Host "ps dry-run wrote nothing"
+      - name: No whitespace errors
+        run: git diff-tree --check --no-commit-id --root -r HEAD
 
-  install:
-    name: real install (informational)
+  node22-helpers:
+    name: Helper compatibility — Node.js 22
     runs-on: ubuntu-latest
-    continue-on-error: true # depends on third-party upstreams; never blocks merge
+    timeout-minutes: 5
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - name: Node.js 22
+        uses: actions/setup-node@53b83947a5a98c8d113130e565377fae1a50d02f # v6.3.0
+        with:
+          node-version: "22"
+          package-manager-cache: false
+
+      - name: Parse and exercise helpers
+        run: |
+          find skills -type f -name '*.mjs' -print0 \
+            | sort -z \
+            | xargs -0 -n1 node --check
+          node skills/a11y-audit/scripts/contrast-check.mjs "#111827:#ffffff"
+          node tests/meta-scan-fixture.mjs
+          node tests/compress-images-fixture.mjs
+
+  bash-linux:
+    name: Bash lifecycle — Linux
+    needs: validate
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - name: Node.js 22 baseline
+        uses: actions/setup-node@53b83947a5a98c8d113130e565377fae1a50d02f # v6.3.0
+        with:
+          node-version: "22"
+          package-manager-cache: false
+
+      - name: Isolated plan/apply/drift/uninstall lifecycle
+        run: SUPERBROWKY_TEST_PROFILE=full bash tests/lifecycle.sh
+
+  bash-macos:
+    name: Bash lifecycle — macOS 3.2
+    needs: validate
+    runs-on: macos-latest
+    timeout-minutes: 15
+    steps:
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - name: Node.js 24
+        uses: actions/setup-node@53b83947a5a98c8d113130e565377fae1a50d02f # v6.3.0
         with:
           node-version: "24"
-      - name: install into a scratch HOME
+          package-manager-cache: false
+
+      - name: Confirm system Bash
+        run: /bin/bash --version
+
+      - name: Isolated plan/apply/drift/uninstall lifecycle
+        run: /bin/bash tests/lifecycle.sh
+
+  powershell-windows:
+    name: PowerShell lifecycle — Windows
+    needs: validate
+    runs-on: windows-latest
+    timeout-minutes: 15
+    steps:
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - name: Node.js 24
+        uses: actions/setup-node@53b83947a5a98c8d113130e565377fae1a50d02f # v6.3.0
+        with:
+          node-version: "24"
+          package-manager-cache: false
+
+      - name: Parse PowerShell
+        shell: pwsh
         run: |
-          export HOME="$(mktemp -d)"
-          bash install-skills.sh
-          for s in $(sed -n '/^MANIFEST=(/,/^)/p' install-skills.sh | sed -n 's/.*|\([a-z0-9-]*\)".*/\1/p') \
-                   $(sed -n '/^BUNDLED=(/,/^)/p' install-skills.sh | sed -n 's/^[[:space:]]*"\([a-z0-9-]*\)".*/\1/p'); do
-            test -f "$HOME/.claude/skills/$s/SKILL.md" || { echo "missing $s"; exit 1; }
-          done
-          echo "all skills installed with SKILL.md"
+          $files = @(
+            "bootstrap.ps1",
+            "install-skills.ps1",
+            "scripts/doctor.ps1",
+            "scripts/audit-bundle.ps1",
+            "tests/lifecycle.ps1"
+          )
+          foreach ($file in $files) {
+            $tokens = $null
+            $errors = $null
+            [void][System.Management.Automation.Language.Parser]::ParseFile(
+              (Resolve-Path $file),
+              [ref]$tokens,
+              [ref]$errors
+            )
+            if ($errors.Count -gt 0) {
+              $errors | ForEach-Object { Write-Error $_ }
+              exit 1
+            }
+            Write-Host "ok: $file"
+          }
+
+      - name: Git Bash line endings and plan
+        shell: bash
+        run: |
+          bash -n bootstrap.sh install-skills.sh scripts/*.sh tests/lifecycle.sh
+          root="$(mktemp -d)"
+          project="$root/project"
+          mkdir -p "$project" "$root/home/.claude" "$root/home/.codex"
+          export HOME="$root/home"
+          export CLAUDE_HOME="$HOME/.claude"
+          export CODEX_HOME="$HOME/.codex"
+          export SUPERBROWKY_STATE_HOME="$HOME/.superbrowky"
+          bash bootstrap.sh "$project" --harness both --profile core > "$root/plan.txt"
+          test -z "$(find "$project" -mindepth 1 -print -quit)"
+          test ! -e "$SUPERBROWKY_STATE_HOME"
+          grep -q "PLAN ONLY" "$root/plan.txt"
+
+      - name: Isolated plan/apply/drift/uninstall lifecycle
+        shell: pwsh
+        run: |
+          $env:SUPERBROWKY_TEST_PROFILE = "full"
+          ./tests/lifecycle.ps1

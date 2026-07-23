@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 // meta-scan.mjs — pre-ship public-page metadata audit. Pure Node, zero deps
-// (uses built-in fetch — needs Node 18+; the kit targets Node 24).
+// (uses built-in fetch — needs Node 18+).
 //
 // Fetches a URL, parses <head>, and reports what's missing or out-of-spec for
 // search + social sharing: title, description, canonical, Open Graph, Twitter
@@ -14,11 +14,43 @@
 //
 // Exit code is non-zero if any ERROR-level check fails — wire it into CI.
 
-const args = process.argv.slice(2);
-const json = args.includes("--json");
-const url = args.find((a) => !a.startsWith("--"));
+function usage(output = console.error) {
+  output("usage: node meta-scan.mjs [--json] <http(s)://url>");
+}
+
+let json = false;
+let url = "";
+for (const arg of process.argv.slice(2)) {
+  if (arg === "--json") json = true;
+  else if (arg === "-h" || arg === "--help") {
+    usage(console.log);
+    process.exit(0);
+  } else if (arg.startsWith("--")) {
+    console.error(`meta-scan: unknown flag: ${arg}`);
+    usage();
+    process.exit(2);
+  } else if (url) {
+    console.error("meta-scan: pass exactly one URL");
+    usage();
+    process.exit(2);
+  } else {
+    url = arg;
+  }
+}
 if (!url) {
-  console.error("usage: node meta-scan.mjs [--json] <url>");
+  usage();
+  process.exit(2);
+}
+try {
+  const parsed = new URL(url);
+  if (!["http:", "https:"].includes(parsed.protocol)) {
+    throw new Error("only http:// and https:// URLs are supported");
+  }
+  if (parsed.username || parsed.password) {
+    throw new Error("URLs containing credentials are not accepted");
+  }
+} catch (error) {
+  console.error(`meta-scan: invalid URL — ${error.message}`);
   process.exit(2);
 }
 
@@ -26,8 +58,13 @@ const findings = []; // {level: error|warn|ok, key, msg}
 const add = (level, key, msg) => findings.push({ level, key, msg });
 
 function attr(tag, name) {
-  const m = tag.match(new RegExp(`${name}\\s*=\\s*("([^"]*)"|'([^']*)')`, "i"));
-  return m ? (m[2] ?? m[3] ?? "") : null;
+  const m = tag.match(
+    new RegExp(
+      `(?:^|\\s)${name}\\s*=\\s*(?:"([^"]*)"|'([^']*)'|([^\\s"'=<>]+))`,
+      "i",
+    ),
+  );
+  return m ? (m[1] ?? m[2] ?? m[3] ?? "") : null;
 }
 // collect <meta>, <link>, <title>, <html ...> from raw HTML
 function tags(html, el) {
@@ -55,7 +92,7 @@ const main = async () => {
   try {
     const res = await fetch(url, { redirect: "follow", headers: { "user-agent": "meta-scan" } });
     finalUrl = res.url || url;
-    if (!res.ok) add("warn", "http", `HTTP ${res.status} for ${url}`);
+    if (!res.ok) add("error", "http", `HTTP ${res.status} for ${url}`);
     html = await res.text();
   } catch (e) {
     console.error(`meta-scan: couldn't fetch ${url} — ${e.message}`);
@@ -75,14 +112,16 @@ const main = async () => {
 
   // --- description ---
   const desc = metaContent(metas, "description");
-  if (desc === null) add("error", "description", "no meta description");
+  if (desc === null || !desc.trim()) add("error", "description", "no non-empty meta description");
   else if (desc.length < 50) add("warn", "description", `description short (${desc.length}, aim 50–160)`);
   else if (desc.length > 160) add("warn", "description", `description ${desc.length} chars — truncates (~160)`);
   else add("ok", "description", `${desc.length} chars`);
 
   // --- canonical ---
   const canonical = links.find((l) => (attr(l, "rel") || "").toLowerCase() === "canonical");
-  if (!canonical) add("warn", "canonical", "no <link rel=canonical>");
+  if (!canonical || !(attr(canonical, "href") || "").trim()) {
+    add("warn", "canonical", "no non-empty <link rel=canonical>");
+  }
   else add("ok", "canonical", attr(canonical, "href"));
 
   // --- viewport ---
@@ -103,7 +142,7 @@ const main = async () => {
   // --- Open Graph ---
   for (const k of ["og:title", "og:description", "og:image", "og:url", "og:type"]) {
     const v = metaContent(metas, k, "property") ?? metaContent(metas, k);
-    if (v === null) add(k === "og:image" || k === "og:title" ? "error" : "warn", k, `missing ${k}`);
+    if (v === null || !v.trim()) add(k === "og:image" || k === "og:title" ? "error" : "warn", k, `missing or empty ${k}`);
     else add("ok", k, k === "og:image" ? v : `present`);
   }
 
@@ -113,8 +152,12 @@ const main = async () => {
   else add("ok", "twitter:card", tw);
 
   // --- favicons ---
-  const hasIcon = links.some((l) => /\bicon\b/i.test(attr(l, "rel") || ""));
-  const hasApple = links.some((l) => /apple-touch-icon/i.test(attr(l, "rel") || ""));
+  const hasIcon = links.some(
+    (l) => /\bicon\b/i.test(attr(l, "rel") || "") && (attr(l, "href") || "").trim(),
+  );
+  const hasApple = links.some(
+    (l) => /apple-touch-icon/i.test(attr(l, "rel") || "") && (attr(l, "href") || "").trim(),
+  );
   if (!hasIcon) add("error", "favicon", "no <link rel=icon>");
   else add("ok", "favicon", "present");
   if (!hasApple) add("warn", "apple-touch-icon", "no apple-touch-icon (blank icon when saved to iOS home screen)");

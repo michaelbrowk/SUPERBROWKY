@@ -7,7 +7,8 @@
 //   node compress-images.mjs [options] <path> [<path> ...]
 //
 // Options:
-//   --dry                Audit only — report savings, write nothing
+//   --dry                Audit only — report savings, write nothing (default)
+//   --apply              Write the accepted changes
 //   --quality N          Quality for lossy encoders (JPEG/WebP). Default 85.
 //   --max-width N        Resize if image width > N. Default 2048.
 //   --max-height N       Resize if image height > N. Default 2048.
@@ -16,6 +17,8 @@
 //   --emit-avif          Emit `.avif` siblings (~20% smaller than WebP; slower
 //                        encode/decode). Good for below-the-fold photos; for the
 //                        LCP hero, WebP is the safer bet. Wins over --emit-webp.
+//   --overwrite-existing Permit replacing an existing emitted sibling, but only
+//                        when the new file is smaller. Off by default.
 //   --png-only           Only process PNGs.
 //   --jpg-only           Only process JPG/JPEGs.
 //   --webp-only          Only process WebPs (re-encode).
@@ -26,19 +29,32 @@
 //
 // Requires: `sharp` installed in the target project (pnpm/npm/yarn add -D sharp).
 
-import { readdirSync, readFileSync, statSync, writeFileSync, renameSync, utimesSync, unlinkSync, existsSync } from "node:fs";
-import { join, extname, basename } from "node:path";
+import {
+  chmodSync,
+  linkSync,
+  lstatSync,
+  readdirSync,
+  realpathSync,
+  renameSync,
+  unlinkSync,
+  utimesSync,
+  writeFileSync,
+} from "node:fs";
+import { basename, extname, isAbsolute, join, relative, resolve } from "node:path";
 
 const args = process.argv.slice(2);
 const paths = [];
+let sawDry = false;
+let sawApply = false;
 const opt = {
-  dry: false,
+  dry: true,
   quality: 85,
   maxWidth: 2048,
   maxHeight: 2048,
   minBytes: 20 * 1024,
   emitWebp: false,
   emitAvif: false,
+  overwriteExisting: false,
   pngOnly: false,
   jpgOnly: false,
   webpOnly: false,
@@ -48,13 +64,15 @@ const opt = {
 
 for (let i = 0; i < args.length; i++) {
   const a = args[i];
-  if (a === "--dry") opt.dry = true;
+  if (a === "--dry") { sawDry = true; opt.dry = true; }
+  else if (a === "--apply") { sawApply = true; opt.dry = false; }
   else if (a === "--quality") opt.quality = Number(args[++i]);
   else if (a === "--max-width") opt.maxWidth = Number(args[++i]);
   else if (a === "--max-height") opt.maxHeight = Number(args[++i]);
   else if (a === "--min-bytes") opt.minBytes = Number(args[++i]);
   else if (a === "--emit-webp") opt.emitWebp = true;
   else if (a === "--emit-avif") opt.emitAvif = true;
+  else if (a === "--overwrite-existing") opt.overwriteExisting = true;
   else if (a === "--png-only") opt.pngOnly = true;
   else if (a === "--jpg-only") opt.jpgOnly = true;
   else if (a === "--webp-only") opt.webpOnly = true;
@@ -69,9 +87,29 @@ if (paths.length === 0) {
   console.error("Error: no paths given.");
   printUsageAndExit(2);
 }
+if (sawDry && sawApply) {
+  console.error("Error: --dry and --apply cannot be used together.");
+  process.exit(2);
+}
+for (const [flag, value, minimum, maximum] of [
+  ["--quality", opt.quality, 1, 100],
+  ["--max-width", opt.maxWidth, 1, Number.MAX_SAFE_INTEGER],
+  ["--max-height", opt.maxHeight, 1, Number.MAX_SAFE_INTEGER],
+  ["--min-bytes", opt.minBytes, 0, Number.MAX_SAFE_INTEGER],
+]) {
+  if (!Number.isFinite(value) || value < minimum || value > maximum) {
+    console.error(`Error: ${flag} must be a number from ${minimum} to ${maximum}.`);
+    process.exit(2);
+  }
+}
+if ([opt.pngOnly, opt.jpgOnly, opt.webpOnly].filter(Boolean).length > 1) {
+  console.error("Error: use at most one of --png-only, --jpg-only, or --webp-only.");
+  process.exit(2);
+}
 
 // Resolve `sharp` from the current working directory's node_modules —
-// the script lives in ~/.claude/skills/... but must load the project's sharp.
+// the script lives in a harness-managed skill directory but must load the
+// project's own sharp dependency.
 let sharp;
 try {
   const { createRequire } = await import("node:module");
@@ -93,29 +131,71 @@ const EMIT_EXT = opt.emitAvif ? ".avif" : opt.emitWebp ? ".webp" : null;
 function shouldConsider(ext) {
   const e = ext.toLowerCase();
   if (!RASTER_EXTS.has(e)) return false;
+  if (EMIT_EXT && e === EMIT_EXT) return false;
   if (opt.pngOnly && e !== ".png") return false;
   if (opt.jpgOnly && e !== ".jpg" && e !== ".jpeg") return false;
   if (opt.webpOnly && e !== ".webp") return false;
   return true;
 }
 
-function walk(root, acc) {
-  const st = statSync(root);
+const visitedDirectories = new Set();
+function inspectPath(path) {
+  try {
+    return lstatSync(path);
+  } catch (error) {
+    if (error?.code === "ENOENT") return null;
+    throw error;
+  }
+}
+function isWithin(root, child) {
+  const rel = relative(root, child);
+  return rel === "" || (!rel.startsWith(`..${process.platform === "win32" ? "\\" : "/"}`) &&
+    rel !== ".." && !isAbsolute(rel));
+}
+function walk(root, boundary, acc) {
+  const st = inspectPath(root);
+  if (!st) {
+    console.warn(`SKIP (missing path): ${rel(root)}`);
+    return acc;
+  }
+  if (st.isSymbolicLink()) {
+    console.warn(`SKIP (symbolic link): ${rel(root)}`);
+    return acc;
+  }
+  const real = realpathSync(root);
+  if (!isWithin(boundary, real)) {
+    console.warn(`SKIP (outside selected root): ${rel(root)}`);
+    return acc;
+  }
   if (st.isFile()) {
     if (shouldConsider(extname(root))) acc.push(root);
     return acc;
   }
   if (!st.isDirectory()) return acc;
+  if (visitedDirectories.has(real)) return acc;
+  visitedDirectories.add(real);
   for (const name of readdirSync(root)) {
     if (name.startsWith(".")) continue;
     if (name === "node_modules") continue;
-    walk(join(root, name), acc);
+    walk(join(root, name), boundary, acc);
   }
   return acc;
 }
 
 const files = [];
-for (const p of paths) walk(p, files);
+for (const p of paths) {
+  const selected = resolve(p);
+  const selectedStat = inspectPath(selected);
+  if (!selectedStat) {
+    console.warn(`SKIP (missing path): ${rel(selected)}`);
+    continue;
+  }
+  if (selectedStat.isSymbolicLink()) {
+    console.warn(`SKIP (symbolic-link input): ${rel(selected)}`);
+    continue;
+  }
+  walk(selected, realpathSync(selected), files);
+}
 
 if (files.length === 0) {
   console.log("No raster images found in the given paths.");
@@ -126,7 +206,7 @@ const results = [];
 
 for (const file of files) {
   const ext = extname(file).toLowerCase();
-  const stBefore = statSync(file);
+  const stBefore = lstatSync(file);
   if (stBefore.size < opt.minBytes) {
     if (opt.verbose) console.log(`SKIP (too small ${kb(stBefore.size)})  ${rel(file)}`);
     continue;
@@ -168,36 +248,72 @@ for (const file of files) {
     outBuf = await pipeline.jpeg({ quality: opt.quality, mozjpeg: true, progressive: true }).toBuffer();
   }
 
-  const before = stBefore.size;
   const after = outBuf.byteLength;
-  const pct = 100 * (1 - after / before);
 
   const emitSibling = EMIT_EXT && ext !== EMIT_EXT;
   const targetPath = emitSibling
     ? file.replace(new RegExp(`${ext}$`), EMIT_EXT)
     : file;
+  const existingTarget = inspectPath(targetPath);
+  let comparisonStat = stBefore;
+  let unsafeTargetReason = null;
+  if (emitSibling && existingTarget) {
+    if (existingTarget.isSymbolicLink() || !existingTarget.isFile()) {
+      unsafeTargetReason = "unsafe sibling exists";
+    } else if (!opt.overwriteExisting) {
+      unsafeTargetReason = "sibling exists";
+    } else {
+      comparisonStat = existingTarget;
+    }
+  }
+  const before = comparisonStat.size;
+  const pct = 100 * (1 - after / before);
 
   const action =
-    after >= before ? "skip (would be larger)"
+    unsafeTargetReason ? `skip (${unsafeTargetReason})`
+    : after >= before ? "skip (would be larger)"
+    : opt.dry && emitSibling && existingTarget ? `dry-run (would overwrite ${basename(targetPath)})`
     : opt.dry ? "dry-run (would write)"
+    : emitSibling && existingTarget ? `overwrite sibling ${basename(targetPath)}`
     : emitSibling ? `write sibling ${basename(targetPath)}`
     : "replace";
 
   const savings = after < before ? before - after : 0;
   results.push({ file, action, before, after, savings, pct });
 
-  if (action === "replace" || (action.startsWith("write sibling"))) {
-    // Write atomically: .tmp then rename; preserve mtime.
-    const tmp = targetPath + ".tmp";
-    writeFileSync(tmp, outBuf);
+  if (action === "replace" || action.startsWith("write sibling") ||
+      action.startsWith("overwrite sibling")) {
+    // Use a unique exclusive temp. A new sibling is committed with a hard link
+    // so an existing user file can never be overwritten by a last-moment race.
+    const tmp = `${targetPath}.superbrowky-tmp-${process.pid}-${Math.random().toString(16).slice(2)}`;
+    writeFileSync(tmp, outBuf, { flag: "wx" });
     try {
-      utimesSync(tmp, stBefore.atime, stBefore.mtime);
+      chmodSync(tmp, comparisonStat.mode);
+      utimesSync(tmp, comparisonStat.atime, comparisonStat.mtime);
     } catch {}
-    renameSync(tmp, targetPath);
+    try {
+      if (emitSibling && !existingTarget) {
+        linkSync(tmp, targetPath);
+        unlinkSync(tmp);
+      } else {
+        const current = inspectPath(targetPath);
+        if (!current || current.isSymbolicLink() || !current.isFile() ||
+            current.dev !== comparisonStat.dev || current.ino !== comparisonStat.ino ||
+            current.size !== comparisonStat.size || current.mtimeMs !== comparisonStat.mtimeMs) {
+          throw new Error(`target changed while processing: ${rel(targetPath)}`);
+        }
+        renameSync(tmp, targetPath);
+      }
+    } catch (error) {
+      try { unlinkSync(tmp); } catch {}
+      console.error(`Error: refused to commit ${rel(targetPath)} — ${error.message}`);
+      process.exit(1);
+    }
   }
 
   console.log(
-    `${padAction(action)}  ${rel(file)}  ${kb(before)} → ${kb(after)}${after < before ? `  (−${pct.toFixed(0)}%)` : ""}`
+    `${padAction(action)}  ${rel(file)}  ${kb(before)} → ${kb(after)}${after < before ? `  (−${pct.toFixed(0)}%)` : ""}` +
+      (emitSibling && existingTarget ? "  (compared with existing sibling)" : "")
   );
 }
 
@@ -221,13 +337,15 @@ function printUsageAndExit(code) {
   console.error([
     "usage: compress-images.mjs [options] <path> [<path> ...]",
     "",
-    "  --dry              audit only, no writes",
+    "  --dry              audit only, no writes (default)",
+    "  --apply            write changes",
     "  --quality N        lossy quality (JPEG/WebP). default 85",
     "  --max-width N      resize if wider. default 2048",
     "  --max-height N     resize if taller. default 2048",
     "  --min-bytes N      skip smaller files. default 20480",
     "  --emit-webp        write .webp sibling (keep original)",
     "  --emit-avif        write .avif sibling (smaller, slower; wins over --emit-webp)",
+    "  --overwrite-existing  allow replacing a smaller emitted sibling; explicit-only",
     "  --png-only         restrict to .png",
     "  --jpg-only         restrict to .jpg/.jpeg",
     "  --webp-only        restrict to .webp",

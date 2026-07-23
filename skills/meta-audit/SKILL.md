@@ -1,11 +1,18 @@
 ---
 name: meta-audit
-description: Pre-ship metadata checklist for any public web page — title, meta description, canonical, Open Graph + Twitter card tags, favicons, viewport, lang, robots, plus robots.txt and sitemap.xml at the origin. Catches the "we launched and the link preview was blank / the tab had no icon / Google indexed the staging noindex" class of bug before it ships. Use when the user mentions OG tags, open graph, social preview, link preview, meta tags, favicon, sitemap, robots.txt, canonical, "why is the share image broken", or a pre-launch check.
-user-invocable: true
-argument-hint: "[url]"
+description: Run a read-only pre-ship metadata audit for a public web page, and fix findings only when the user asks. Checks title, description, canonical, Open Graph and Twitter tags, favicons, viewport, language, robots directives, robots.txt, and sitemap.xml. Use for OG tags, social or link previews, meta tags, favicon, sitemap, robots.txt, canonical URLs, broken share images, or a public-page pre-launch check.
 ---
 
 # meta-audit — pre-ship public-page metadata
+
+## Portable safety contract
+
+- Resolve `SKILL_DIR` to the directory containing this `SKILL.md`; run the
+  bundled scanner as `node "$SKILL_DIR/scripts/meta-scan.mjs"`.
+- A scan is read-only but makes network requests to the supplied URL. Do not
+  send private URLs, credentials, cookies, or tokens to it.
+- Edit metadata or publish only when the user explicitly asks for those
+  actions. A clean scan is evidence, not release approval.
 
 The cheap, high-embarrassment-avoidance half of "ship clean". None of this
 affects how the page looks — it affects how it's **shared, found, and saved**.
@@ -26,9 +33,9 @@ launch, and again after any framework/SEO config change.
 ### 1. Scan
 
 ```bash
-node ~/.claude/skills/meta-audit/scripts/meta-scan.mjs https://your-url
+node "$SKILL_DIR/scripts/meta-scan.mjs" https://your-url
 # machine-readable / CI:
-node ~/.claude/skills/meta-audit/scripts/meta-scan.mjs --json https://your-url
+node "$SKILL_DIR/scripts/meta-scan.mjs" --json https://your-url
 ```
 
 The script fetches the page, parses `<head>`, and reports each check as

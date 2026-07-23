@@ -1,15 +1,26 @@
 # Product
 
-> ⚠ PLACEHOLDERS PRESENT — Claude: if you can read this line, this file hasn't
-> been filled in yet. STOP and interview the user (or run `/impeccable init`)
-> before any design work — designing from placeholders produces generic slop.
+> ⚠ PLACEHOLDERS PRESENT — this file has not been filled in yet. For mutating
+> design work, interview the user or use the installed primary design skill
+> before choosing a direction. A read-only audit may continue if it clearly
+> states the missing context.
 >
 > Strategy + brand: who this is for, what it is, what it must feel like.
-> Claude reads it before any design work, and the `impeccable` skill reads it
-> natively (keep these exact section headings). Fill every field — vague
-> input here is the #1 cause of generic output. Easiest way: run
-> `/impeccable init` and answer the interview (it writes this file). Delete
-> this entire quote block when the file is real.
+> Both harness adapters read it before product or design work. Keep one
+> canonical product context here; do not create a competing hidden brief.
+> Delete this entire quote block when the file is real.
+
+## Authority
+
+- **Artifact ID:** <stable ID, e.g. PRODUCT-v1>
+- **Version:** <version, e.g. 1.0>
+- **Status:** DRAFT_PROPOSAL | ACCEPTED | SUPERSEDED
+- **Accepted by:** <human name, or not yet accepted>
+- **Accepted on:** <YYYY-MM-DD, or not yet accepted>
+- **Decision reference:** <Decision.md entry, or none>
+
+Only a human decision may set `Status` to `ACCEPTED`. Until then, the content
+below is a working proposal and must not silently override product evidence.
 
 ## Register
 
