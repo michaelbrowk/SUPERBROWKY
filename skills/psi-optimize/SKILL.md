@@ -21,9 +21,9 @@ Web perf audit-and-fix workflow focused on what PSI actually measures and what w
 
 Most PSI fixes are **boring and mechanical**. Don't theorize — measure, diagnose, fix one finding at a time, re-measure. The gap between a 40 and a 90 on mobile is almost always:
 
-1. One oversized LCP image that isn't preloaded  
-2. A blocking script or font  
-3. Render-blocking CSS  
+1. One oversized LCP image that isn't preloaded
+2. A blocking script or font
+3. Render-blocking CSS
 4. Layout shift from un-dimensioned images or late-mounting components
 
 The hero LCP image alone is typically 70% of the problem. Start there.
