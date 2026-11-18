@@ -10,11 +10,12 @@
 # Format: <repo slug>=<40-character commit>, one per line.
 
 # --- Upstream skill repos (commit SHA — verified known-good) ---
-emilkowalski/skills=e695d13cb298db0f46d5ef05be2ad13fa12908a6
-Leonxlnx/taste-skill=1a6dc0a5ac5d0152120938bf66ed67ea2ec8e552
-coreyhaines31/marketingskills=7f4af1ea8e7809e0142c55bf19243a706f539c25
+emilkowalski/skills=64eb3deb9a5fbfa041faf783e0bc3fd635872e9c
+# Compatible 2026-09-28 guidance; November HEAD adds a separate hook/runtime system.
+Leonxlnx/taste-skill=85fc47e4a1355fc2e047f8447171389c993855c9
+coreyhaines31/marketingskills=73573e94a06a39965978b3fa1f9c1eace8cebc7c
 hardikpandya/stop-slop=8da1f030185bdfe8471220585162991eaeb970e9
-pbakaus/impeccable=e587004ee42883dad40d14cd0f5e1b21ae1933df
+pbakaus/impeccable=d41d9860b0094dcb68030657da63461212835aaa
 
 # `impeccable` is fetched from the pinned repository snapshot above. The kit no
 # longer runs a live npm installer whose downloaded skill content could drift.

@@ -195,14 +195,14 @@ check_skill() {
     return
   fi
   if [ "$source_type" = "git" ]; then
-    expected_source="git:${repo}:${folder}+third-party-safety-v1"
+    expected_source="git:${repo}:${folder}+third-party-safety-v2"
     expected_ref="$(sb_lock_pin "$LOCK_FILE" "$pin_key")"
     if ! LC_ALL=C grep -q '^## SUPERBROWKY third-party safety contract$' "${dest}/SKILL.md"; then
       sb_error "$harness/$name: reviewed third-party safety overlay is absent"
       BLOCKED=$((BLOCKED + 1))
       return
     fi
-    if [ "$receipt_overlay" != "third-party-safety-v1" ] && [ "$name" != "impeccable" ]; then
+    if [ "$receipt_overlay" != "third-party-safety-v2" ] && [ "$name" != "impeccable" ]; then
       sb_warn "$harness/$name: safety overlay provenance is missing from receipt"
       WARNINGS=$((WARNINGS + 1))
     fi
@@ -244,13 +244,13 @@ check_skill() {
     fi
   fi
   if [ "$name" = "impeccable" ]; then
-    expected_source="git:${repo}:${folder}+third-party-safety-v1+superbrowky-overlay-v1"
-    if [ "$receipt_overlay" != "third-party-safety-v1+superbrowky-overlay-v1" ]; then
+    expected_source="git:${repo}:${folder}+third-party-safety-v2+superbrowky-overlay-v2"
+    if [ "$receipt_overlay" != "third-party-safety-v2+superbrowky-overlay-v2" ]; then
       sb_warn "$harness/$name: portable overlay provenance is missing from receipt"
       WARNINGS=$((WARNINGS + 1))
     fi
-    if [ -e "${dest}/scripts/cleanup-deprecated.mjs" ] || [ -e "${dest}/scripts/pin.mjs" ]; then
-      sb_error "$harness/$name: prohibited global cleanup/pin helper is present"
+    if [ -e "${dest}/scripts" ] || [ -e "${dest}/agents" ] || [ ! -f "${dest}/PORTABLE.md" ]; then
+      sb_error "$harness/$name: guidance-only package contains runtime files or lacks PORTABLE.md"
       BLOCKED=$((BLOCKED + 1))
       return
     fi
@@ -643,7 +643,24 @@ EOF
   done
 }
 
+check_retired_skills() {
+  local harness name receipt
+  for harness in $(sb_harnesses "$HARNESS"); do
+    while IFS= read -r name || [ -n "$name" ]; do
+      case "$name" in ''|'#'*) continue ;; *[!a-z0-9-]*)
+        sb_error "Invalid retired skill name"; BLOCKED=$((BLOCKED + 1)); return ;;
+      esac
+      receipt="$(sb_receipt_path "$SUPERBROWKY_STATE_HOME" "$harness" "$name")"
+      if [ -e "$receipt" ] || [ -L "$receipt" ]; then
+        sb_warn "$harness/$name: retired managed skill remains; preserved for review and explicit receipt-backed uninstall"
+        WARNINGS=$((WARNINGS + 1))
+      fi
+    done < "${ROOT}/manifests/retired-skills.txt"
+  done
+}
+
 check_inventory
+check_retired_skills
 check_node
 check_project
 

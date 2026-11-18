@@ -20,5 +20,9 @@ Accepted project decisions only. Newest entry first.
 - **Gate transition:** <from → to, or NONE>
 - **Replaces:** <previous entry, or none>
 
-Approval applies only to the exact artifact versions and hashes above. A later
-revision needs a new decision or an explicit replacement entry.
+Acceptance of context, direction, or a release applies to the exact artifact
+versions and hashes above. A later accepted revision needs a new decision or
+an explicit replacement entry. Scope authorization may cover subsequent
+implementation and verification inside its stated boundaries; preserve that
+authority instead of asking again for every reversible edit. `EVOLVE` is a
+record type, not a required approval phrase.

@@ -87,8 +87,23 @@ endorsement.
 ## Harness rules
 
 State each shared rule once in `HARNESS.md`. Keep the adapters short. A rule
-that encodes one person's feedback needs an Evolve proposal and a before/after
-evaluation before it becomes global.
+that encodes one person's feedback needs a concrete proposal, source versions,
+and a representative before/after evaluation before it becomes global. Make
+the change within explicit maintenance authorization; preserve authorization
+already given rather than requiring a special `EVOLVE` phrase.
+
+Keep accepted project context intact during upgrades. Use the v4 merge-candidate
+format for v4.1; do not rename receipts or silently migrate a project's context.
+Surface modes belong in the project surface map, not in a global product
+register. Missing or draft context must not block a narrow authorized edit
+whose intent is clear from the existing implementation and brief.
+
+For substantive design work follow craft owner → builder → owner verification
+→ independent review. Independent means the reviewer neither authored the
+artifact nor set its direction. Use only roles in the active runtime catalog;
+report a missing requested role rather than impersonating it. Preserve the
+latest correction, exact source/version, prior authorization, and remaining
+acceptance checks through every handoff.
 
 Automated reviewers may return `READY_FOR_HUMAN_REVIEW`; only a human can
 accept direction or release.

@@ -16,7 +16,7 @@ case "$PROFILE" in
     EXPECTED_SKILLS="${EXPECTED_SKILLS} seo-audit schema site-architecture ai-seo programmatic-seo cro"
     ;;
   full)
-    EXPECTED_SKILLS="${EXPECTED_SKILLS} seo-audit schema site-architecture ai-seo programmatic-seo cro high-end-visual-design redesign-existing-projects"
+    EXPECTED_SKILLS="${EXPECTED_SKILLS} seo-audit schema site-architecture ai-seo programmatic-seo cro"
     ;;
   *) printf 'Invalid SUPERBROWKY_TEST_PROFILE: %s\n' "$PROFILE" >&2; exit 2 ;;
 esac
@@ -138,6 +138,8 @@ for harness in claude codex; do
     || fail "Impeccable overlay missing from ${harness}"
   assert_absent "${harness_home}/skills/impeccable/scripts/cleanup-deprecated.mjs"
   assert_absent "${harness_home}/skills/impeccable/scripts/pin.mjs"
+  assert_absent "${harness_home}/skills/impeccable/scripts/impeccable"
+  assert_absent "${harness_home}/skills/impeccable/scripts/impeccable.ps1"
   assert_file "${harness_home}/skills/impeccable/LICENSE"
 done
 
@@ -416,5 +418,12 @@ assert_file "${PROJECT}/CLAUDE.md"
 assert_file "${PROJECT}/AGENTS.md"
 grep -q 'original claude adapter' "${PROJECT}/CLAUDE.md"
 grep -q 'original codex adapter' "${PROJECT}/AGENTS.md"
+
+if [ -n "${SUPERBROWKY_TEST_BASELINE_KIT:-}" ]; then
+  # The include reuses this test's disposable homes; it cannot target a real
+  # installation and does not change the parent process environment.
+  # shellcheck source=tests/upgrade-v4.inc.sh
+  . "${ROOT}/tests/upgrade-v4.inc.sh"
+fi
 
 printf 'PASS: isolated plan/apply/doctor/audit/drift/onboarding/uninstall lifecycle\n'

@@ -13,8 +13,9 @@ not change the shared harness automatically.
 - **Open or resolved:** OPEN | RESOLVED
 - **Candidate shared rule:** YES | NO
 
-If `Candidate shared rule` is `YES`, prepare an Evolve proposal with a concrete
-proposal ID, target file hashes, before/after diff, representative evaluation,
-and expected trade-off. Record the proposal as `decision_type: NONE`; wait for
-a separate human `EVOLVE` decision tied to that exact proposal before changing
-shared instructions or skills.
+If `Candidate shared rule` is `YES`, prepare a concrete diff against named
+source versions, representative before/after evidence, and the expected
+trade-off. Keep it a proposal until a maintenance request authorizes that
+scope. Honor existing authorization; no special approval phrase is needed.
+Record an accepted shared rule in `Decision.md`. Literal feedback alone never
+silently changes shared instructions or skills.

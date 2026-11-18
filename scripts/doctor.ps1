@@ -475,7 +475,7 @@ try {
       }
       $folder = if ($forHarness -eq "claude") { $skill.ClaudeFolder } else { $skill.CodexFolder }
       $expectedSource = if ($skill.SourceType -eq "git") {
-        "git:$($skill.Repo):$folder+third-party-safety-v1"
+        "git:$($skill.Repo):$folder+third-party-safety-v2"
       } else {
         "bundled:$folder"
       }
@@ -486,8 +486,8 @@ try {
           $blocked++
           continue
         }
-        $expectedOverlay = "third-party-safety-v1"
-        if ($name -eq "impeccable") { $expectedOverlay += "+superbrowky-overlay-v1" }
+        $expectedOverlay = "third-party-safety-v2"
+        if ($name -eq "impeccable") { $expectedOverlay += "+superbrowky-overlay-v2" }
         if (-not $receipt.ContainsKey("overlay") -or $receipt["overlay"] -ne $expectedOverlay) {
           Write-Warn "$forHarness/$name`: overlay provenance missing from receipt"
           $partial++
@@ -507,10 +507,11 @@ try {
         }
       }
       if ($name -eq "impeccable") {
-        $expectedSource += "+superbrowky-overlay-v1"
-        if ((Test-AnyPath (Join-Path $destination "scripts/cleanup-deprecated.mjs")) -or
-            (Test-AnyPath (Join-Path $destination "scripts/pin.mjs"))) {
-          Write-Fail "$forHarness/$name`: prohibited cleanup/pin helper is present"
+        $expectedSource += "+superbrowky-overlay-v2"
+        if ((Test-AnyPath (Join-Path $destination "scripts")) -or
+            (Test-AnyPath (Join-Path $destination "agents")) -or
+            -not (Test-Path -LiteralPath (Join-Path $destination "PORTABLE.md") -PathType Leaf)) {
+          Write-Fail "$forHarness/$name`: guidance-only package contains runtime files or lacks PORTABLE.md"
           $blocked++
           continue
         }
@@ -758,6 +759,19 @@ try {
         (Select-String -LiteralPath $path -SimpleMatch "<framework / language>" -Quiet)) {
       Write-Warn "$name`: adapter placeholders remain"
       $partial++
+    }
+  }
+
+  $retiredSkills = Get-Content -LiteralPath (Join-Path $KitRoot "manifests/retired-skills.txt")
+  foreach ($forHarness in $(if ($Harness -eq "both") { @("claude", "codex") } else { @($Harness) })) {
+    foreach ($name in $retiredSkills) {
+      if ([string]::IsNullOrWhiteSpace($name) -or $name.StartsWith("#")) { continue }
+      if ($name -notmatch '^[a-z0-9-]+$') { throw "Invalid retired skill name" }
+      $retiredReceipt = Join-Path $StateHome "state/$forHarness/$name.receipt.tsv"
+      if (Test-AnyPath $retiredReceipt) {
+        Write-Warn "$forHarness/$name`: retired managed skill remains; preserved for review and explicit receipt-backed uninstall"
+        $partial++
+      }
     }
   }
 

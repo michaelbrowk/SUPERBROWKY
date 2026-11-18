@@ -1,9 +1,10 @@
 # Product
 
-> ⚠ PLACEHOLDERS PRESENT — this file has not been filled in yet. For mutating
-> design work, interview the user or use the installed primary design skill
-> before choosing a direction. A read-only audit may continue if it clearly
-> states the missing context.
+> ⚠ PLACEHOLDERS PRESENT — this file has not been filled in yet. Read the
+> existing implementation, approved assets, and task brief first. A narrow
+> authorized change or read-only audit may proceed with explicit assumptions.
+> Ask only for missing decisions that affect meaning, scope, identity, or
+> authority; do not start a context interview as hidden setup.
 >
 > Strategy + brand: who this is for, what it is, what it must feel like.
 > Both harness adapters read it before product or design work. Keep one
@@ -22,11 +23,12 @@
 Only a human decision may set `Status` to `ACCEPTED`. Until then, the content
 below is a working proposal and must not silently override product evidence.
 
-## Register
+## Surface purpose
 
-<one word — `brand` or `product`. **brand** = design IS the product (landing,
-portfolio, campaign, marketing). **product** = design SERVES the product (app
-UI, dashboard, tool). This changes how the skills judge every screen.>
+Map each surface's mode in `PROJECT.md`: **Operate**, **Read**, **Persuade**,
+or **Experience**. Keep shared users, purpose, and personality here. Do not
+assign one global `brand` or `product` register to every screen. Existing
+accepted context remains authoritative until its migration is reviewed.
 
 ## Users
 

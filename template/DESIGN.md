@@ -1,9 +1,10 @@
 # Design System
 
-> ⚠ PLACEHOLDERS PRESENT — this file has not been filled in yet. For mutating
-> visual work, fill the relevant sections with the user or extract a proposal
-> from existing code. A read-only audit may continue if it clearly states the
-> missing context.
+> ⚠ PLACEHOLDERS PRESENT — this file has not been filled in yet. Use the
+> existing system, components, approved assets, and task brief as evidence.
+> A narrow authorized change or read-only audit may proceed with explicit
+> assumptions. Ask only for a missing decision that materially affects the
+> result; extract or write context only when that work is in scope.
 >
 > This becomes the accepted visual system after human review. Before that,
 > generated values are proposals, not rules. Concrete values belong in token
@@ -23,6 +24,10 @@
 Only a human decision may set `Status` to `ACCEPTED`. Until then, values below
 are proposals and may be used for explicitly authorized exploration, not as
 canonical rules.
+
+The latest explicit brief and approved system outrank generic style advice.
+A new screen inherits the existing identity. Each surface's mode is mapped in
+`PROJECT.md`; it does not grant permission to replace this design system.
 
 ## Atmosphere
 
@@ -62,8 +67,9 @@ Rules:
   palette, or another accepted strategy; state where each role may appear>.
 - **Functional colors communicate state, never ornament.** Red/green/amber may
   only appear when something IS in that state; a resting screen is neutral.
-- **Never hide an invented hex in feature code.** If no token fits, propose a
-  token-system change and get it accepted before implementation.
+- **Never hide an invented hex in feature code.** If no token fits, include
+  the token-system change in the reviewed diff within the task's authority.
+  Ask before a material system or identity change not already authorized.
 - **Gradients:** <policy — e.g. "one gradient, one purpose: the primary CTA.
   When the gradient is scarce, it's valuable." Or "none.">
 

@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 #
-# SUPERBROWKY v4 — safe project bootstrap for Claude Code and Codex.
+# SUPERBROWKY v4.1 — safe project bootstrap for Claude Code and Codex.
 #
 # The default invocation is a read-only plan. Add --apply only after the user
 # has reviewed the harness, profile, destinations, conflicts, and remote
@@ -11,6 +11,8 @@ set -eu
 HERE="$(cd "$(dirname "$0")" && pwd)"
 TEMPLATE_DIR="${HERE}/template"
 KIT_VERSION="4"
+# Keep the receipt/candidate schema at v4 so existing installations remain readable.
+KIT_RELEASE="$(cat "${HERE}/VERSION")"
 
 ok()   { printf '\033[0;32m✓ %s\033[0m\n' "$1"; }
 warn() { printf '\033[1;33m⚠ %s\033[0m\n' "$1" >&2; }
@@ -283,6 +285,7 @@ EOF
   fi
   if ! {
     printf '# SUPERBROWKY project receipt v%s\n' "${KIT_VERSION}"
+    printf '# kit_release=%s\n' "${KIT_RELEASE}"
     printf '# harness=%s\n' "${HARNESS}"
     printf '# profile=%s\n' "${PROFILE}"
     printf '# kind\trelative_path\tsha256\tsource\n'
@@ -618,7 +621,7 @@ case "${MODE}" in
     ;;
 esac
 
-bold "SUPERBROWKY v${KIT_VERSION} — ${APPLY_TEXT}"
+bold "SUPERBROWKY v${KIT_RELEASE} — ${APPLY_TEXT}"
 printf '  Project:  %s\n' "${TARGET}"
 printf '  Harness:  %s\n' "${HARNESS}"
 printf '  Profile:  %s\n\n' "${PROFILE}"

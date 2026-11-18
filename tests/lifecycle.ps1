@@ -26,9 +26,6 @@ if ($Profile -in @("web-launch", "growth", "full")) {
 if ($Profile -in @("growth", "full")) {
   $ExpectedSkills += @("ai-seo", "programmatic-seo", "cro")
 }
-if ($Profile -eq "full") {
-  $ExpectedSkills += @("high-end-visual-design", "redesign-existing-projects")
-}
 $TestRoot = Join-Path ([IO.Path]::GetTempPath()) ("superbrowky-ps-lifecycle-" + [Guid]::NewGuid().ToString("N"))
 $LogRoot = Join-Path ([IO.Path]::GetTempPath()) ("superbrowky-ps-lifecycle-logs-" + [Guid]::NewGuid().ToString("N"))
 $TestHome = Join-Path $TestRoot "home"
@@ -140,6 +137,8 @@ try {
     Assert-True (Select-String -LiteralPath (Join-Path $impeccable "SKILL.md") -SimpleMatch "SUPERBROWKY portable contract" -Quiet) "portable overlay missing: $forHarness"
     Assert-Absent (Join-Path $impeccable "scripts/cleanup-deprecated.mjs")
     Assert-Absent (Join-Path $impeccable "scripts/pin.mjs")
+    Assert-Absent (Join-Path $impeccable "scripts/impeccable")
+    Assert-Absent (Join-Path $impeccable "scripts/impeccable.ps1")
     Assert-File (Join-Path $impeccable "LICENSE")
   }
   foreach ($file in @("HARNESS.md", "PROJECT.md", "PRODUCT.md", "DESIGN.md", "Decision.md", "Feedback.md")) {
@@ -402,6 +401,11 @@ try {
   Assert-File (Join-Path $Project "AGENTS.md")
   Assert-True (([IO.File]::ReadAllText((Join-Path $Project "CLAUDE.md"))) -match "original claude adapter") "Claude adapter changed"
   Assert-True (([IO.File]::ReadAllText((Join-Path $Project "AGENTS.md"))) -match "original codex adapter") "Codex adapter changed"
+
+  if (-not [string]::IsNullOrWhiteSpace($env:SUPERBROWKY_TEST_BASELINE_KIT)) {
+    # Reuse the lifecycle's disposable directories and environment only.
+    . (Join-Path $Root "tests/upgrade-v4.inc.ps1")
+  }
 
   $Succeeded = $true
   Write-Host "PASS: isolated plan/apply/doctor/audit/drift/onboarding/uninstall lifecycle"
