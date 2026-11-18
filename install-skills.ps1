@@ -629,8 +629,11 @@ function Add-MarkdownOverlayAfterFrontmatter {
 
 function Add-ImpeccablePortableOverlay {
   param([Parameter(Mandatory)][string]$SkillDirectory, [Parameter(Mandatory)][string]$Ref)
-  & node (Join-Path $KitRoot "scripts/adapt-impeccable.mjs") $SkillDirectory $Ref
-  if ($LASTEXITCODE -ne 0) { throw "impeccable: portable guidance adaptation failed" }
+  # Native stdout is diagnostic text, not part of Stage-AllSkills' record stream.
+  $adaptationOutput = & node (Join-Path $KitRoot "scripts/adapt-impeccable.mjs") $SkillDirectory $Ref
+  $adaptationExitCode = $LASTEXITCODE
+  $adaptationOutput | Out-Host
+  if ($adaptationExitCode -ne 0) { throw "impeccable: portable guidance adaptation failed" }
 }
 
 function Add-ThirdPartySafetyOverlay {

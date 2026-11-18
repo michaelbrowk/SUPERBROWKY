@@ -36,6 +36,7 @@ $Project = Join-Path $TestHome "work/example"
 $Pwsh = if ($IsWindows) { Join-Path $PSHOME "pwsh.exe" } else { Join-Path $PSHOME "pwsh" }
 $Succeeded = $false
 $Failure = $null
+$script:LastProcessLog = $null
 
 function Assert-True {
   param([bool]$Condition, [string]$Message)
@@ -79,9 +80,10 @@ function Write-Text {
 
 function Invoke-Logged {
   param([string]$LogName, [string]$Script, [string[]]$Arguments)
+  $log = Join-Path $LogRoot $LogName
+  $script:LastProcessLog = $log
   $output = @(& $Pwsh -NoLogo -NoProfile -File $Script @Arguments 2>&1)
   $code = $LASTEXITCODE
-  $log = Join-Path $LogRoot $LogName
   [IO.File]::WriteAllText(
     $log,
     (($output | ForEach-Object { [string]$_ }) -join "`n") + "`n",
@@ -421,6 +423,15 @@ try {
 }
 
 if ($null -ne $Failure) {
+  if ($null -ne $script:LastProcessLog -and
+      (Test-Path -LiteralPath $script:LastProcessLog -PathType Leaf)) {
+    Write-Host "Last process log (last 100 lines): $script:LastProcessLog" -ForegroundColor Yellow
+    try {
+      Get-Content -LiteralPath $script:LastProcessLog -Tail 100 | ForEach-Object { Write-Host $_ }
+    } catch {
+      Write-Host "Could not read the last process log: $($_.Exception.Message)" -ForegroundColor Yellow
+    }
+  }
   Write-Error $Failure
   exit 1
 }
