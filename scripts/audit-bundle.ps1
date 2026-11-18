@@ -274,6 +274,7 @@ if ($gitRef -notmatch '^(?:[0-9a-fA-F]{40,64}|local)$') { $gitRef = "invalid" }
 
 $lines = [System.Collections.Generic.List[string]]::new()
 $lines.Add("# SUPERBROWKY Audit Bundle")
+$lines.Add("- Kit release: ``$(([IO.File]::ReadAllText((Join-Path $KitRoot 'VERSION'))).Trim())``")
 $lines.Add("")
 $lines.Add("- Generated: $([DateTime]::UtcNow.ToString('yyyy-MM-ddTHH:mm:ssZ'))")
 $lines.Add("- Kit ref: ``$(ConvertTo-AuditCell $gitRef)``")

@@ -176,6 +176,7 @@ fi
 
 {
   printf '# SUPERBROWKY Audit Bundle\n\n'
+  printf -- '- Kit release: `%s`\n' "$(cat "${ROOT}/VERSION")"
   printf -- '- Generated: `%s`\n' "$timestamp_iso"
   printf -- '- Kit ref: `%s`\n' "$(sb_short_ref "$kit_ref")"
   printf -- '- Harness: `%s`\n' "$HARNESS"

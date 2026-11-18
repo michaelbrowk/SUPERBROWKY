@@ -5,3 +5,5 @@
 *.tsv text eol=lf
 *.md text eol=lf
 versions.lock text eol=lf
+manifests/retired-skills.txt text eol=lf
+VERSION text eol=lf

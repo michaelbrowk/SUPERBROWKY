@@ -352,88 +352,8 @@ validate_staged_provenance() {
 }
 
 harden_impeccable() {
-  # Remove automatic global cleanup/pinning from the upstream derivative and
-  # insert our reviewed portable contract immediately after YAML frontmatter.
-  local dest="$1" overlay="${HERE}/overlays/impeccable-portable.md"
-  local cleanup="${dest}/scripts/cleanup-deprecated.mjs"
-  local pin="${dest}/scripts/pin.mjs"
-  local rewritten="${dest}/SKILL.md.superbrowky-overlay" file portable
-  if [ ! -f "$overlay" ]; then
-    sb_error "impeccable: missing reviewed overlay $overlay"
-    return 1
-  fi
-  if [ ! -f "$cleanup" ] || [ ! -f "$pin" ]; then
-    sb_error "impeccable: expected cleanup/pin helpers changed upstream; refusing derivative"
-    return 1
-  fi
-  rm -f "$cleanup" "$pin" || return 1
-  if ! awk -v overlay="$overlay" '
-    {
-      if ($0 == "## Pin / Unpin") {
-        removed_pin_section=1
-        skip_pin_section=1
-      }
-      if (skip_pin_section) next
-      if ($0 ~ /^Plus two management commands:/) {
-        removed_pin_intro=1
-        next
-      }
-      if (in_frontmatter && $0 ~ /^allowed-tools:/) {
-        skipping_allowed_tools=1
-        removed_allowed_tools=1
-        next
-      }
-      if (skipping_allowed_tools && $0 ~ /^[[:space:]]/) next
-      if (skipping_allowed_tools) skipping_allowed_tools=0
-      print
-      if ($0 == "---") {
-        delimiters++
-        if (delimiters == 1) in_frontmatter=1
-        if (delimiters == 2) {
-          in_frontmatter=0
-          print ""
-          while ((getline line < overlay) > 0) print line
-          close(overlay)
-          inserted=1
-        }
-      }
-    }
-    END { if (!inserted || !removed_pin_intro || !removed_pin_section) exit 42 }
-  ' "${dest}/SKILL.md" > "$rewritten"; then
-    rm -f "$rewritten"
-    sb_error "impeccable: could not insert portable overlay after frontmatter"
-    return 1
-  fi
-  mv "$rewritten" "${dest}/SKILL.md"
-  if LC_ALL=C grep -q '^allowed-tools:' "${dest}/SKILL.md"; then
-    sb_error "impeccable: unsafe upstream allowed-tools remains"
-    return 1
-  fi
-
-  # Upstream examples assume a project-local install. This package is global,
-  # so every Markdown helper path resolves through the skill's own directory.
-  while IFS= read -r file; do
-    portable="${file}.superbrowky-paths"
-    if ! sed \
-        -e "s#\\.claude/skills/impeccable/#\$SKILL_DIR/#g" \
-        -e "s#\\.agents/skills/impeccable/#\$SKILL_DIR/#g" \
-        "$file" > "$portable"; then
-      rm -f "$portable"
-      return 1
-    fi
-    mv "$portable" "$file"
-  done <<EOF
-$(find "$dest" -type f -name '*.md' -print)
-EOF
-  if LC_ALL=C grep -R -n -e '\.claude/skills/impeccable' -e '\.agents/skills/impeccable' "$dest" >/dev/null 2>&1; then
-    sb_error "impeccable: project-local harness paths remain after hardening"
-    return 1
-  fi
-  if LC_ALL=C grep -R -n -e 'cleanup-deprecated\.mjs' -e 'pin\.mjs' "$dest" >/dev/null 2>&1; then
-    sb_error "impeccable: removed global cleanup/pin helpers are still referenced"
-    return 1
-  fi
-  return 0
+  # Shared deterministic transform applies the same portability rules in Bash and PowerShell.
+  node "${HERE}/scripts/adapt-impeccable.mjs" "$1" "$2"
 }
 
 apply_third_party_safety_overlay() {
@@ -479,6 +399,7 @@ close_known_git_dependencies() {
       pinned_url="https://github.com/${repo}/blob/${ref}/tools/REGISTRY.md"
       if ! sed \
           -e "s#../../tools/REGISTRY\\.md#${pinned_url}#g" \
+          -e "s#https://github.com/${repo}/blob/main/tools/REGISTRY\\.md#${pinned_url}#g" \
           "${dest}/SKILL.md" > "$rewritten"; then
         rm -f "$rewritten"
         return 1
@@ -576,7 +497,7 @@ EOF
         fi
       fi
       if [ "$name" = "impeccable" ]; then
-        if ! harden_impeccable "$dest"; then
+        if ! harden_impeccable "$dest" "$ref"; then
           failed=$((failed + 1))
           continue
         fi
@@ -586,9 +507,9 @@ EOF
           failed=$((failed + 1))
           continue
         fi
-        overlay="third-party-safety-v1"
+        overlay="third-party-safety-v2"
         if [ "$name" = "impeccable" ]; then
-          overlay="${overlay}+superbrowky-overlay-v1"
+          overlay="${overlay}+superbrowky-overlay-v2"
         fi
         source="${source}+${overlay}"
         if [ "$name" = "ai-seo" ]; then

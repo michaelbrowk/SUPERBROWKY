@@ -577,11 +577,12 @@ function Pin-KnownUpstreamLinks {
   if ($Name -ne "ai-seo") { return }
   $skillMd = Join-Path $SkillDirectory "SKILL.md"
   $original = [IO.File]::ReadAllText($skillMd)
-  if (-not $original.Contains("../../tools/REGISTRY.md")) {
+  if (-not $original.Contains("../../tools/REGISTRY.md") -and
+      -not $original.Contains("https://github.com/$Repo/blob/main/tools/REGISTRY.md")) {
     throw "ai-seo: expected upstream registry link changed"
   }
   $pinnedUrl = "https://github.com/$Repo/blob/$Ref/tools/REGISTRY.md"
-  $text = $original.Replace("../../tools/REGISTRY.md", $pinnedUrl)
+  $text = $original.Replace("../../tools/REGISTRY.md", $pinnedUrl).Replace("https://github.com/$Repo/blob/main/tools/REGISTRY.md", $pinnedUrl)
   [IO.File]::WriteAllText($skillMd, $text, [Text.UTF8Encoding]::new($false))
   $externalRegistryLinks = @(Get-ChildItem -LiteralPath $SkillDirectory -Recurse -File |
     Select-String -SimpleMatch "../../tools/REGISTRY.md")
@@ -627,90 +628,12 @@ function Add-MarkdownOverlayAfterFrontmatter {
 }
 
 function Add-ImpeccablePortableOverlay {
-  param([Parameter(Mandatory)][string]$SkillDirectory)
-  $cleanup = Join-Path $SkillDirectory "scripts/cleanup-deprecated.mjs"
-  $pin = Join-Path $SkillDirectory "scripts/pin.mjs"
-  if (-not (Test-AnyPath $cleanup) -or -not (Test-AnyPath $pin)) {
-    throw "impeccable: expected cleanup/pin helpers changed upstream"
-  }
-  Remove-Item -LiteralPath $cleanup -Force
-  Remove-Item -LiteralPath $pin -Force
-
-  $skillMd = Join-Path $SkillDirectory "SKILL.md"
-  $lines = ([IO.File]::ReadAllText($skillMd) -replace "`r`n", "`n" -replace "`r", "`n").Split("`n")
-  $rewritten = [System.Collections.Generic.List[string]]::new()
-  $inFrontmatter = $false
-  $delimiterCount = 0
-  $skipAllowedTools = $false
-  $skipPinSection = $false
-  $removedAllowedTools = $false
-  $removedPinIntro = $false
-  $removedPinSection = $false
-  foreach ($line in $lines) {
-    if ($line -eq "## Pin / Unpin") {
-      $skipPinSection = $true
-      $removedPinSection = $true
-    }
-    if ($skipPinSection) { continue }
-    if ($line -match '^Plus two management commands:') {
-      $removedPinIntro = $true
-      continue
-    }
-    if ($inFrontmatter -and $line -match '^allowed-tools:') {
-      $skipAllowedTools = $true
-      $removedAllowedTools = $true
-      continue
-    }
-    if ($skipAllowedTools -and $line -match '^\s') { continue }
-    if ($skipAllowedTools) { $skipAllowedTools = $false }
-    $rewritten.Add($line)
-    if ($line -eq "---") {
-      $delimiterCount++
-      if ($delimiterCount -eq 1) { $inFrontmatter = $true }
-      if ($delimiterCount -eq 2) { $inFrontmatter = $false }
-    }
-  }
-  if (-not $removedPinIntro -or -not $removedPinSection) {
-    throw "impeccable: expected pin sections changed upstream"
-  }
-  [IO.File]::WriteAllText($skillMd, (($rewritten -join "`n").TrimEnd("`n") + "`n"), [Text.UTF8Encoding]::new($false))
-  if (Select-String -LiteralPath $skillMd -Pattern '^allowed-tools:' -Quiet) {
-    throw "impeccable: unsafe upstream allowed-tools remains"
-  }
-  Add-MarkdownOverlayAfterFrontmatter -SkillMd $skillMd -OverlayPath (Join-Path $KitRoot "overlays/impeccable-portable.md")
-
-  $markdownFiles = [System.Collections.Generic.List[string]]::new()
-  foreach ($file in (Get-ChildItem -LiteralPath $SkillDirectory -Recurse -File -Filter "*.md")) {
-    $markdownFiles.Add($file.FullName)
-  }
-  foreach ($file in $markdownFiles) {
-    $text = [System.IO.File]::ReadAllText($file) -replace "`r`n", "`n" -replace "`r", "`n"
-    foreach ($prefix in @(
-      "~/.claude/skills/impeccable",
-      "~/.agents/skills/impeccable",
-      '$HOME/.claude/skills/impeccable',
-      '$HOME/.agents/skills/impeccable',
-      ".claude/skills/impeccable",
-      ".agents/skills/impeccable",
-      ".claude\skills\impeccable",
-      ".agents\skills\impeccable"
-    )) {
-      $text = $text.Replace("$prefix/", '$SKILL_DIR/')
-      $text = $text.Replace("$prefix\", '$SKILL_DIR/')
-      $text = $text.Replace($prefix, '$SKILL_DIR')
-    }
-    [System.IO.File]::WriteAllText($file, $text, [System.Text.UTF8Encoding]::new($false))
-  }
-  foreach ($file in $markdownFiles) {
-    if (Select-String -LiteralPath $file -Pattern '(?:\.claude|\.agents)[\\/]skills[\\/]impeccable' -Quiet) {
-      throw "impeccable overlay: harness-relative skill path remains in $file"
-    }
-  }
-  $removedHelperReferences = @(Get-ChildItem -LiteralPath $SkillDirectory -Recurse -File |
-    Select-String -Pattern '(?:cleanup-deprecated|pin)\.mjs')
-  if ($removedHelperReferences.Count -gt 0) {
-    throw "impeccable overlay: removed cleanup/pin helpers are still referenced"
-  }
+  param([Parameter(Mandatory)][string]$SkillDirectory, [Parameter(Mandatory)][string]$Ref)
+  # Native stdout is diagnostic text, not part of Stage-AllSkills' record stream.
+  $adaptationOutput = & node (Join-Path $KitRoot "scripts/adapt-impeccable.mjs") $SkillDirectory $Ref
+  $adaptationExitCode = $LASTEXITCODE
+  $adaptationOutput | Out-Host
+  if ($adaptationExitCode -ne 0) { throw "impeccable: portable guidance adaptation failed" }
 }
 
 function Add-ThirdPartySafetyOverlay {
@@ -835,14 +758,14 @@ function Stage-AllSkills {
           -Ref $ref
       }
       if ($skill.Name -eq "impeccable") {
-        Add-ImpeccablePortableOverlay -SkillDirectory $destination
+        Add-ImpeccablePortableOverlay -SkillDirectory $destination -Ref $ref
       }
       $overlay = "-"
       if ($skill.SourceType -eq "git") {
         Add-ThirdPartySafetyOverlay -SkillDirectory $destination
-        $overlay = "third-party-safety-v1"
+        $overlay = "third-party-safety-v2"
         if ($skill.Name -eq "impeccable") {
-          $overlay += "+superbrowky-overlay-v1"
+          $overlay += "+superbrowky-overlay-v2"
         }
         $sourceLabel += "+$overlay"
         if ($skill.Name -eq "ai-seo") {

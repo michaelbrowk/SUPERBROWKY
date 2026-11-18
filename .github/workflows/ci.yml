@@ -40,9 +40,9 @@ jobs:
 
       - name: Parse and lint Bash
         run: |
-          bash -n bootstrap.sh install-skills.sh scripts/*.sh tests/lifecycle.sh
+          bash -n bootstrap.sh install-skills.sh scripts/*.sh tests/*.sh
           shellcheck -S warning \
-            bootstrap.sh install-skills.sh scripts/*.sh tests/lifecycle.sh
+            bootstrap.sh install-skills.sh scripts/*.sh tests/*.sh
 
       - name: Parse bundled JavaScript
         run: |
@@ -51,6 +51,8 @@ jobs:
             | xargs -0 -n1 node --check
           node --check tests/meta-scan-fixture.mjs
           node --check tests/compress-images-fixture.mjs
+          node --check scripts/adapt-impeccable.mjs
+          node --check tests/impeccable-adaptation-fixture.mjs
 
       - name: Helper behavior
         run: |
@@ -83,6 +85,7 @@ jobs:
           node skills/meta-audit/scripts/meta-scan.mjs --help
           node tests/meta-scan-fixture.mjs
           node tests/compress-images-fixture.mjs
+          node tests/impeccable-adaptation-fixture.mjs
 
       - name: No whitespace errors
         run: git diff-tree --check --no-commit-id --root -r HEAD
@@ -109,15 +112,18 @@ jobs:
           node skills/a11y-audit/scripts/contrast-check.mjs "#111827:#ffffff"
           node tests/meta-scan-fixture.mjs
           node tests/compress-images-fixture.mjs
+          node tests/impeccable-adaptation-fixture.mjs
 
   bash-linux:
     name: Bash lifecycle — Linux
     needs: validate
     runs-on: ubuntu-latest
-    timeout-minutes: 15
+    timeout-minutes: 25
     steps:
       - name: Checkout
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
 
       - name: Node.js 22 baseline
         uses: actions/setup-node@53b83947a5a98c8d113130e565377fae1a50d02f # v6.3.0
@@ -125,17 +131,26 @@ jobs:
           node-version: "22"
           package-manager-cache: false
 
-      - name: Isolated plan/apply/drift/uninstall lifecycle
+      - name: Prepare the exact v4 upgrade baseline
+        run: |
+          baseline="$RUNNER_TEMP/superbrowky-v4"
+          mkdir -p "$baseline"
+          git archive 7cabe54c3abcc48b9c0d95717bca2e1f6d77f26a | tar -xf - -C "$baseline"
+          printf 'SUPERBROWKY_TEST_BASELINE_KIT=%s\n' "$baseline" >> "$GITHUB_ENV"
+
+      - name: Isolated installation and v4 upgrade lifecycle
         run: SUPERBROWKY_TEST_PROFILE=full bash tests/lifecycle.sh
 
   bash-macos:
     name: Bash lifecycle — macOS 3.2
     needs: validate
     runs-on: macos-latest
-    timeout-minutes: 15
+    timeout-minutes: 25
     steps:
       - name: Checkout
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
 
       - name: Node.js 24
         uses: actions/setup-node@53b83947a5a98c8d113130e565377fae1a50d02f # v6.3.0
@@ -146,17 +161,26 @@ jobs:
       - name: Confirm system Bash
         run: /bin/bash --version
 
-      - name: Isolated plan/apply/drift/uninstall lifecycle
+      - name: Prepare the exact v4 upgrade baseline
+        run: |
+          baseline="$RUNNER_TEMP/superbrowky-v4"
+          mkdir -p "$baseline"
+          git archive 7cabe54c3abcc48b9c0d95717bca2e1f6d77f26a | tar -xf - -C "$baseline"
+          printf 'SUPERBROWKY_TEST_BASELINE_KIT=%s\n' "$baseline" >> "$GITHUB_ENV"
+
+      - name: Isolated installation and v4 upgrade lifecycle
         run: /bin/bash tests/lifecycle.sh
 
   powershell-windows:
     name: PowerShell lifecycle — Windows
     needs: validate
     runs-on: windows-latest
-    timeout-minutes: 15
+    timeout-minutes: 25
     steps:
       - name: Checkout
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
 
       - name: Node.js 24
         uses: actions/setup-node@53b83947a5a98c8d113130e565377fae1a50d02f # v6.3.0
@@ -172,7 +196,8 @@ jobs:
             "install-skills.ps1",
             "scripts/doctor.ps1",
             "scripts/audit-bundle.ps1",
-            "tests/lifecycle.ps1"
+            "tests/lifecycle.ps1",
+            "tests/upgrade-v4.inc.ps1"
           )
           foreach ($file in $files) {
             $tokens = $null
@@ -192,7 +217,7 @@ jobs:
       - name: Git Bash line endings and plan
         shell: bash
         run: |
-          bash -n bootstrap.sh install-skills.sh scripts/*.sh tests/lifecycle.sh
+          bash -n bootstrap.sh install-skills.sh scripts/*.sh tests/*.sh
           root="$(mktemp -d)"
           project="$root/project"
           mkdir -p "$project" "$root/home/.claude" "$root/home/.codex"
@@ -205,7 +230,19 @@ jobs:
           test ! -e "$SUPERBROWKY_STATE_HOME"
           grep -q "PLAN ONLY" "$root/plan.txt"
 
-      - name: Isolated plan/apply/drift/uninstall lifecycle
+      - name: Prepare the exact v4 upgrade baseline
+        shell: pwsh
+        run: |
+          $baseline = Join-Path $env:RUNNER_TEMP "superbrowky-v4"
+          New-Item -ItemType Directory -Path $baseline -Force | Out-Null
+          $archive = Join-Path $env:RUNNER_TEMP "superbrowky-v4.tar"
+          git archive --output=$archive 7cabe54c3abcc48b9c0d95717bca2e1f6d77f26a
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          tar -xf $archive -C $baseline
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          "SUPERBROWKY_TEST_BASELINE_KIT=$baseline" >> $env:GITHUB_ENV
+
+      - name: Isolated installation and v4 upgrade lifecycle
         shell: pwsh
         run: |
           $env:SUPERBROWKY_TEST_PROFILE = "full"

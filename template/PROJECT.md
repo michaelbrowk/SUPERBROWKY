@@ -27,9 +27,21 @@ Use one row per independently designed surface. The default context is
 `PRODUCT.md` + `DESIGN.md`. A scoped context is allowed only when this table
 declares it; it inherits the default and contains differences only.
 
-| Surface | Code paths | Product context | Design context | Verification |
-|---|---|---|---|---|
-| <app / marketing / admin / etc.> | <paths> | `PRODUCT.md` | `DESIGN.md` | <URL, preview, tests, sizes> |
+| Surface | Mode | Code paths | Product context | Design context | Verification |
+|---|---|---|---|---|---|
+| <app / marketing / admin / etc.> | <Operate / Read / Persuade / Experience> | <paths> | `PRODUCT.md` | `DESIGN.md` | <URL, preview, tests, sizes> |
+
+Choose the mode from the user's outcome on that surface, not from the whole
+product or its brand:
+
+- **Operate:** complete a task — app UI, settings, editors, dashboards.
+- **Read:** understand information — documentation, articles, help.
+- **Persuade:** decide and act — landing pages, campaigns, pricing.
+- **Experience:** engage with the work itself — portfolios, galleries, showcases.
+
+One product can have several modes. The marketing page of an operational tool
+is still Persuade; its documentation is Read. The mode guides craft, not
+permission to change the brand, content, or task scope.
 
 Do not create hidden or competing briefs. If a monorepo genuinely needs
 different contexts, use explicit names such as `PRODUCT.marketing.md` and

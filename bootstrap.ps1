@@ -1,5 +1,5 @@
 #!/usr/bin/env pwsh
-# SUPERBROWKY v4 — safe native PowerShell bootstrap for Claude Code and Codex.
+# SUPERBROWKY v4.1 — safe native PowerShell bootstrap for Claude Code and Codex.
 #
 # The default invocation is a read-only plan. Add -Apply only after reviewing
 # the harness, profile, destinations, conflicts, and remote sources.
@@ -29,6 +29,8 @@ $ErrorActionPreference = "Stop"
 $KitRoot = $PSScriptRoot
 $TemplateRoot = Join-Path $KitRoot "template"
 $KitVersion = "4"
+# The receipt/candidate schema stays v4 for existing installations.
+$KitRelease = ([IO.File]::ReadAllText((Join-Path $KitRoot "VERSION"))).Trim()
 $ClaudeHomeExplicit = -not [string]::IsNullOrWhiteSpace($env:CLAUDE_HOME)
 $CodexHomeExplicit = -not [string]::IsNullOrWhiteSpace($env:CODEX_HOME)
 $ClaudeHome = if ($ClaudeHomeExplicit) { $env:CLAUDE_HOME } else { Join-Path $HOME ".claude" }
@@ -320,6 +322,7 @@ function Install-Templates {
     $partialReceipt = "$receipt.partial.$PID"
     $lines = @(
       "# SUPERBROWKY project receipt v$KitVersion"
+      "# kit_release=$KitRelease"
       "# harness=$Harness"
       "# profile=$Profile"
       "# kind`trelative_path`tsha256`tsource"
@@ -485,7 +488,7 @@ try {
     exit (Uninstall-Project)
   }
 
-  Write-Host "SUPERBROWKY v$KitVersion — $(if ($Apply) { 'apply' } else { 'plan only' })"
+  Write-Host "SUPERBROWKY v$KitRelease — $(if ($Apply) { 'apply' } else { 'plan only' })"
   Write-Host "  Project:  $Target"
   Write-Host "  Harness:  $Harness"
   Write-Host "  Profile:  $Profile"

@@ -25,7 +25,11 @@ the same operating system can also run in Claude Code.
 - Do not install plugins, packages, MCP servers, or remote content unless the
   user explicitly asks for the installation or approves a presented plan.
 - Start a new Codex task after changing global skills so discovery is
-  refreshed.
+  refreshed. A direct file read in the current task does not prove discovery
+  in a fresh task.
+- Use the active Codex role catalog and collaboration tools for delegation;
+  follow the ownership and independent-review rules in `HARNESS.md`. Do not
+  depend on another assistant's private bootstrap or role files.
 
 If mapped context is still draft or contains placeholders, ask only what the
 current task needs. Read the existing code and project evidence before asking

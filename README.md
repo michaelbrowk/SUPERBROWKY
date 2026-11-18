@@ -1,4 +1,4 @@
-# SUPERBROWKY
+# SUPERBROWKY v4.1
 
 [![CI](https://github.com/michaelbrowk/SUPERBROWKY/actions/workflows/ci.yml/badge.svg)](https://github.com/michaelbrowk/SUPERBROWKY/actions/workflows/ci.yml)
 
@@ -9,7 +9,30 @@ state.
 
 Start with [START-HERE.md](START-HERE.md) if you only need the commands.
 
-## What changed in v4
+## What changed in v4.1
+
+- Reviewed source pins for Impeccable 4.9.2, Emil, Taste, and Marketing Skills.
+  Stop Slop keeps its unchanged pin.
+- Impeccable ships as portable craft guidance and Markdown references. Its
+  optional native launcher, automatic executable download, hooks, pin/unpin,
+  and live-browser runtime are not included. Normal scoped design, critique,
+  and audit work reads project context directly.
+- Taste uses the reviewed compatible snapshot `85fc47e` from September 28,
+  2026, as a composition reference lens. Its newer 2.5.1 engine is deferred;
+  v4.1 does not adapt that engine or install its hooks/runtime. See
+  [THIRD_PARTY_SKILLS.md](THIRD_PARTY_SKILLS.md) for the pin rationale.
+- Team rules now cover craft owner → builder → owner verification → independent
+  review, active role catalogs, latest corrections, and prior authorization.
+- Surface modes are **Operate**, **Read**, **Persuade**, and **Experience**;
+  a narrow authorized edit no longer requires a context interview first.
+- The two removed upstream Taste lenses are retired. `full` remains a
+  compatibility alias for `growth`; existing installations are preserved until
+  explicitly removed through their receipts.
+
+Upgrade instructions: [Migrating from v4 to v4.1](docs/MIGRATION-v4-v4.1.md).
+Exact sources and adaptation details: [THIRD_PARTY_SKILLS.md](THIRD_PARTY_SKILLS.md).
+
+## Installation safety
 
 The installer now behaves like a careful teammate:
 
@@ -26,7 +49,8 @@ The installer now behaves like a careful teammate:
   secrets.
 
 There is no live `npx -y` installer in the bootstrap path.
-Existing users: see [Migrating from v3 to v4](docs/MIGRATION-v3-v4.md).
+Users still on v3 should first read [Migrating from v3 to v4](docs/MIGRATION-v3-v4.md),
+then the v4.1 migration notes.
 
 ## Quick start — macOS / Linux
 
@@ -49,6 +73,10 @@ rediscovers the new skills. Fill the remaining `PROJECT.md`, `PRODUCT.md`,
 `DESIGN.md`, and adapter placeholders with the agent. Product and design
 context remains `DRAFT_PROPOSAL` until the human accepts the exact versions
 and the matching decision is recorded.
+Missing context does not block a narrow authorized edit that can use existing
+project evidence. A successful install/check does not prove that a fresh AI
+session discovers the skills or performs a real design task correctly; verify
+that separately on the intended runtime.
 
 ## Quick start — Windows PowerShell
 
@@ -81,8 +109,9 @@ When a user asks you to install this repository:
    - project and global destination paths;
    - existing-file conflicts;
    - remote sources and pinned commits.
-4. Ask for confirmation.
-5. Run the same command with `--apply` only after confirmation.
+4. Check whether the user's existing authorization covers this exact scope
+   and destinations. Ask only for approval that is still missing.
+5. Run the same command with `--apply` within that authorization.
 6. Run `--check` and report its exact status.
 7. Ask the user to open a fresh session/task.
 
@@ -99,11 +128,16 @@ it.
 | `core` | `impeccable`, `design-taste-frontend`, `emil-design-eng`, `stop-slop`, `a11y-audit`, `psi-optimize`, `meta-audit` | Product UI and normal web work |
 | `web-launch` | core + `seo-audit`, `schema`, `site-architecture` | A public site approaching launch |
 | `growth` | core + web-launch + `ai-seo`, `programmatic-seo`, `cro` | An explicit acquisition/growth task |
-| `full` | everything above + `high-end-visual-design`, `redesign-existing-projects` | Experimental opt-in; not a sensible default |
+| `full` | same skills as `growth` | Compatibility alias; the two obsolete Taste lenses are retired |
 
 `impeccable` is the primary UI engine. Other skills own distinct jobs or act
 as explicit lenses; they do not vote on, approve, or replace the human's
 direction.
+
+There are 13 managed skills across all profiles. Retired skills from an older
+installation are not silently deleted during an update. See the migration
+notes before uninstalling, which applies to all receipt-owned global skills
+for the selected harness, not just retired entries.
 
 ## Harness selection
 
@@ -122,7 +156,7 @@ The platform-neutral core is:
 
 - `HARNESS.md` — workflow, action boundaries, skill routing, review semantics;
 - `PROJECT.md` — runtime commands, implementation sources, surfaces, and
-  scoped context mapping;
+  per-surface modes and scoped context mapping;
 - `PRODUCT.md` — versioned audience, purpose, personality, and principles;
 - `DESIGN.md` — versioned tokens, type, components, motion, and constraints;
 - `Decision.md` — accepted project decisions and authorization boundaries;
@@ -137,6 +171,9 @@ If a destination already exists, SUPERBROWKY preserves it and writes a
 content-addressed merge candidate such as
 `AGENTS.md.from-superbrowky-v4-1a2b3c4d5e6f`. It never overwrites an earlier
 candidate.
+
+v4.1 keeps the v4 receipt and merge-candidate format. A `v4` filename is the
+format identifier, not evidence that the candidate contains old templates.
 
 After the human accepts the exact merge, record the candidate filename and
 SHA-256 in `Decision.md`. Merge its content into the canonical file, append:
@@ -243,13 +280,14 @@ scope, accepted direction, or authorization boundaries. The shared harness
 supplies that missing operating system:
 
 ```text
-context → evidence → options → human direction → implementation
-        → rendered verification → human release decision
+current brief + authorization → source evidence → scoped implementation
+    → owner verification → independent review → authorized release + read-back
 ```
 
 Automated reviewers return `READY_FOR_HUMAN_REVIEW` or `NOT_READY`. Passing
 tests, a clean screenshot, or successful generation is evidence, never final
-approval.
+approval. Unverified required checks remain `PARTIAL`. For a clear accepted
+brief, reversible craft decisions do not require repeated human checkpoints.
 
 ## Development
 
